@@ -3,39 +3,125 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>タップ速度ゲーム - 社員旅行出し物</title>
+    <title>DECODE THE CUBE | 生存率わずか10%の暗号解読デスゲーム</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Noto+Sans+JP:wght@300;400;700&display=swap" rel="stylesheet">
 </head>
 <body>
+    <div class="blood-overlay"></div>
+    <div class="overlay"></div>
+    <div class="stars"></div>
     <div class="container">
-        <h1>タップ速度チャレンジ</h1>
-        
-        <div id="game-container">
-            <div id="start-screen">
-                <p>お名前を入力してください：</p>
-                <input type="text" id="player-name" placeholder="名前を入力">
-                <button id="start-button">ゲーム開始！</button>
-            </div>
-            
-            <div id="game-screen" class="hidden">
-                <div id="timer">10</div>
-                <button id="tap-button">ここをタップ！</button>
-                <div id="tap-count">0</div>
-            </div>
-            
-            <div id="result-screen" class="hidden">
-                <h2>結果発表</h2>
-                <p>あなたのスコア: <span id="final-score">0</span>回</p>
-                <button id="play-again">もう一度プレイ</button>
+        <header>
+            <div class="blood-drip"></div>
+            <h1>DECODE<span>THE</span>CUBE</h1>
+            <div class="glitch-effect"></div>
+            <p class="tagline">生存率わずか10%の暗号解読デスゲーム</p>
+        </header>
+
+        <div id="start-screen">
+            <div class="player-info">
+                <p class="warning">警告: このゲームは精神的ショックを与える可能性があります</p>
+                <input type="text" id="player-name" placeholder="実験体番号を入力">
+                <div class="holographic-button" id="start-button">
+                    <span class="btn-glow"></span>
+                    <span class="btn-text">実験開始</span>
+                </div>
+                <p class="instructions">暗号キューブを解読せよ。失敗は死を意味する。</p>
+                <p class="death-count">これまでの犠牲者数: <span class="count">1,278</span></p>
             </div>
         </div>
-        
+
+        <div id="game-screen" class="hidden">
+            <div class="game-header">
+                <div class="level-indicator">実験フェーズ: <span id="current-level">1</span></div>
+                <div class="timer"><i class="fas fa-skull"></i> <span id="timer-value">60</span></div>
+            </div>
+            
+            <div class="cube-container">
+                <div class="cube" id="game-cube">
+                    <div class="cube-face front"></div>
+                    <div class="cube-face back"></div>
+                    <div class="cube-face right"></div>
+                    <div class="cube-face left"></div>
+                    <div class="cube-face top"></div>
+                    <div class="cube-face bottom"></div>
+                </div>
+            </div>
+
+            <div class="control-panel">
+                <div class="code-display">
+                    <p>解読進捗：<span id="progress">0/6</span></p>
+                    <div id="code-segments">
+                        <div class="code-segment">?</div>
+                        <div class="code-segment">?</div>
+                        <div class="code-segment">?</div>
+                        <div class="code-segment">?</div>
+                        <div class="code-segment">?</div>
+                        <div class="code-segment">?</div>
+                    </div>
+                </div>
+                <div class="control-buttons">
+                    <button class="control-btn" data-direction="up"><i class="fas fa-arrow-up"></i></button>
+                    <div class="horizontal-buttons">
+                        <button class="control-btn" data-direction="left"><i class="fas fa-arrow-left"></i></button>
+                        <button class="control-btn" data-direction="solve">解読</button>
+                        <button class="control-btn" data-direction="right"><i class="fas fa-arrow-right"></i></button>
+                    </div>
+                    <button class="control-btn" data-direction="down"><i class="fas fa-arrow-down"></i></button>
+                </div>
+            </div>
+        </div>
+
+        <div id="result-screen" class="hidden">
+            <div class="result-content">
+                <h2>実験<span id="mission-result">完了</span></h2>
+                <p>解読時間: <span id="clear-time">00:00</span></p>
+                <p>獲得スコア: <span id="final-score">0</span>点</p>
+                <p>到達フェーズ: <span id="final-level">1</span></p>
+                <div class="holographic-button" id="play-again">
+                    <span class="btn-glow"></span>
+                    <span class="btn-text">再挑戦</span>
+                </div>
+                <p class="death-message success">おめでとう。あなたは生き残った。次も同じように幸運であるとは限らないが。</p>
+                <p class="death-message failure hidden">ゲームオーバー。あなたは実験に失敗した。また一人、犠牲者が増えたようだ。</p>
+            </div>
+        </div>
+
         <div id="ranking-container">
-            <h2>ランキング</h2>
-            <ol id="ranking-list"></ol>
+            <h2>生存者一覧</h2>
+            <div class="ranking-wrapper">
+                <table id="ranking-table">
+                    <thead>
+                        <tr>
+                            <th>順位</th>
+                            <th>実験体番号</th>
+                            <th>フェーズ</th>
+                            <th>スコア</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ranking-list">
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
-    
+
+    <div id="level-up-modal" class="modal hidden">
+        <div class="modal-content">
+            <h2>次のフェーズへ</h2>
+            <p>警告: 暗号パターンの複雑度が上昇します</p>
+            <div class="holographic-button" id="next-level-btn">
+                <span class="btn-glow"></span>
+                <span class="btn-text">挑戦する</span>
+            </div>
+            <p class="modal-warning">逃げ場はない。前に進むしかないのだ。</p>
+        </div>
+    </div>
+
     <script src="script.js"></script>
 </body>
 </html> 
