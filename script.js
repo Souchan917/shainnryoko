@@ -3,560 +3,483 @@ document.addEventListener('DOMContentLoaded', () => {
     const startScreen = document.getElementById('start-screen');
     const gameScreen = document.getElementById('game-screen');
     const resultScreen = document.getElementById('result-screen');
+    const levelModal = document.getElementById('level-modal');
+    const startBtn = document.getElementById('start-btn');
+    const restartBtn = document.getElementById('restart-btn');
+    const nextLevelBtn = document.getElementById('next-level-btn');
     const playerNameInput = document.getElementById('player-name');
-    const startButton = document.getElementById('start-button');
-    const playAgainButton = document.getElementById('play-again');
-    const rankingList = document.getElementById('ranking-list');
-    const gameCube = document.getElementById('game-cube');
-    const cubeFaces = document.querySelectorAll('.cube-face');
+    const levelDisplay = document.getElementById('level');
+    const timeDisplay = document.getElementById('time');
+    const codeSegments = document.querySelectorAll('.code-segment');
     const controlButtons = document.querySelectorAll('.control-btn');
-    const timerDisplay = document.getElementById('timer-value');
-    const currentLevelDisplay = document.getElementById('current-level');
-    const finalLevelDisplay = document.getElementById('final-level');
+    const cube = document.querySelector('.cube');
+    const missionResultDisplay = document.getElementById('mission-result');
     const finalScoreDisplay = document.getElementById('final-score');
     const clearTimeDisplay = document.getElementById('clear-time');
-    const progressDisplay = document.getElementById('progress');
-    const codeSegmentsContainer = document.getElementById('code-segments');
-    const codeSegments = document.querySelectorAll('.code-segment');
-    const levelUpModal = document.getElementById('level-up-modal');
-    const nextLevelBtn = document.getElementById('next-level-btn');
-    const missionResultDisplay = document.getElementById('mission-result');
-    const successMessage = document.querySelector('.death-message.success');
-    const failureMessage = document.querySelector('.death-message.failure');
+    const finalLevelDisplay = document.getElementById('final-level');
+    const completedLevelDisplay = document.getElementById('completed-level');
+    const timeBonusDisplay = document.getElementById('time-bonus');
+    const levelBonusDisplay = document.getElementById('level-bonus');
+    const rankingList = document.getElementById('ranking-list');
+    const failureMessage = document.getElementById('failure-message');
+    const onsenBubblesContainer = document.querySelector('.onsen-bubbles');
 
-    // ゲーム変数
-    let playerName = '';
-    let currentLevel = 1;
-    let score = 0;
-    let timeLeft = 60;
-    let timer;
-    let gameStartTime;
-    let isGameActive = false;
-    let currentCubeRotation = { x: -15, y: 15, z: 0 };
-    let cubeSymbols = [];
-    let collectedCodes = [];
-    let targetCodes = [];
-    let rankings = [];
-    let gameData = {
-        currentFace: 0, // 0:前, 1:右, 2:後, 3:左, 4:上, 5:下
-        facesDiscovered: [false, false, false, false, false, false]
+    // ゲーム状態
+    let gameState = {
+        playerName: '',
+        level: 1,
+        score: 0,
+        time: 60,
+        collectedCodes: [],
+        cubeRotation: { x: -15, y: 15, z: 0 },
+        gameActive: false,
+        timer: null,
+        startTime: 0,
+        elapsedTime: 0
     };
 
-    // キューブの回転状態を更新する関数
-    function updateCubeRotation() {
-        gameCube.style.transform = `rotateX(${currentCubeRotation.x}deg) rotateY(${currentCubeRotation.y}deg) rotateZ(${currentCubeRotation.z}deg)`;
-    }
+    // キューブシンボル（レベルごとに変わる）
+    const levelSymbols = [
+        // レベル1
+        { front: '温', back: '死', right: '湯', left: '命', top: '泉', bottom: '罠' },
+        // レベル2
+        { front: '闇', back: '忍', right: '宿', left: '鬼', top: '殺', bottom: '落' },
+        // レベル3
+        { front: '業', back: '怨', right: '霧', left: '縛', top: '惨', bottom: '骸' },
+        // レベル4
+        { front: '絶', back: '滅', right: '呪', left: '断', top: '焦', bottom: '血' },
+        // レベル5
+        { front: '獄', back: '冥', right: '崩', left: '闘', top: '壊', bottom: '終' }
+    ];
 
-    // キューブを回転させる関数
-    function rotateCube(direction) {
-        switch(direction) {
-            case 'up':
-                currentCubeRotation.x += 90;
-                if (gameData.currentFace === 0) gameData.currentFace = 4;
-                else if (gameData.currentFace === 4) gameData.currentFace = 2;
-                else if (gameData.currentFace === 2) gameData.currentFace = 5;
-                else if (gameData.currentFace === 5) gameData.currentFace = 0;
-                break;
-            case 'down':
-                currentCubeRotation.x -= 90;
-                if (gameData.currentFace === 0) gameData.currentFace = 5;
-                else if (gameData.currentFace === 5) gameData.currentFace = 2;
-                else if (gameData.currentFace === 2) gameData.currentFace = 4;
-                else if (gameData.currentFace === 4) gameData.currentFace = 0;
-                break;
-            case 'left':
-                currentCubeRotation.y -= 90;
-                if (gameData.currentFace === 0) gameData.currentFace = 1;
-                else if (gameData.currentFace === 1) gameData.currentFace = 2;
-                else if (gameData.currentFace === 2) gameData.currentFace = 3;
-                else if (gameData.currentFace === 3) gameData.currentFace = 0;
-                break;
-            case 'right':
-                currentCubeRotation.y += 90;
-                if (gameData.currentFace === 0) gameData.currentFace = 3;
-                else if (gameData.currentFace === 3) gameData.currentFace = 2;
-                else if (gameData.currentFace === 2) gameData.currentFace = 1;
-                else if (gameData.currentFace === 1) gameData.currentFace = 0;
-                break;
-        }
-        updateCubeRotation();
-        playRotateSound();
-    }
+    // コード（レベルごとに変わる）
+    const levelCodes = [
+        ['7', '3', '9', '2'],
+        ['A', '4', 'F', '1'],
+        ['B', '5', 'D', '8'],
+        ['E', '0', '6', 'C'],
+        ['死', '命', '罠', '生']
+    ];
 
-    // サウンド効果
-    function playRotateSound() {
-        const audio = new Audio();
-        audio.src = 'data:audio/mp3;base64,SUQzAwAAAAAAFgAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/+5DEAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAAFAAAJxQBVVVVVVVVVVVVVVVVVVVWqqqqqqqqqqqqqqqqqqqrV1dXV1dXV1dXV1dXV1dXV/////////////////////wAAADJMQU1FMy45OXIBbgAAACAAAABTSU5HAAAATwAAAP/7kMQAAAZUAVl1AAAi6jLLrqFAAFYAAA9CcADLCMsMIDxP4ED/+Lnt+93vfwQIEEeBAYQf/8IODxCPB4fngg//gQIP//iEed//8QQQQ5TQK1Vt5NUAAACIBAAyQJOJmYxFTSxkIwRIWW22lqqoM0QodB/wYCHQl9wQEUwVG3ZiZXEhFn0j/G//6UXhLjw3//h2JZ4fPJxMI0xXV//HkRKU//j0JBcqG4BHiKxBSHUAAFADJEk4mGDMVNLGIjBEhqbbaWqqgzRCl0G/JgIdBn3JAQzBUbdmJlcSEUfSP8b//pReEuPDf/+HYlnh88nEwjTFc3/8eREpT/+PQkFyobgEeIAA';
-        audio.volume = 0.3;
-        audio.play();
-    }
+    // ランキングデータ
+    let rankings = [
+        { name: 'たろう', score: 5240, level: 5, time: 243 },
+        { name: 'はなこ', score: 4120, level: 4, time: 198 },
+        { name: 'ゆうた', score: 3600, level: 3, time: 176 },
+        { name: 'まりこ', score: 2800, level: 3, time: 203 },
+        { name: 'けんた', score: 2200, level: 2, time: 154 },
+        { name: 'あきら', score: 1950, level: 2, time: 167 },
+        { name: 'さとし', score: 1500, level: 2, time: 189 },
+        { name: 'みさき', score: 1200, level: 1, time: 132 },
+        { name: 'ようこ', score: 980, level: 1, time: 145 },
+        { name: 'かずき', score: 750, level: 1, time: 156 }
+    ];
 
-    function playCreepySound() {
-        const audio = new Audio();
-        // 不気味なささやき声のような効果音
-        audio.src = 'data:audio/mp3;base64,SUQzAwAAAAAAFgAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/+5DEAAAGmAFN1AAAImAzma6FAABQQAAAAQAAP/AAIPPPP+fP/B/mD//5g//B//BAHmCAPB/+YIAcwQAAgAATM0yITiAlIQDAgxI+6BRxV1glSJEsn9QNYiVIyyrX//rVUaNf/jXWkBCRJA+QkZY1qrGJEiy7//+LkscoO7KupIySjz8JGG3//5bUWUG2UeWVx5UjisViv//86QeS71f//9rEikBEiAQJAEAQBAEhUROTEFNRTMuOTlyAW4AAAAAACAAAFNJT0cAAABPAAAA/w==';
-        audio.volume = 0.7;
-        audio.play();
-    }
-
-    function playSolveSound(success) {
-        const audio = new Audio();
-        if (success) {
-            audio.src = 'data:audio/mp3;base64,SUQzAwAAAAAAFgAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/+5DEAAAHCAE1dAAAIvgwnLsEABBQQQAAP8AB3/gQOf/n+OIBDv5///CPB/+BAPwQD8Hg/gQHcCgACAAAmJlkgmpDKQKCCxdgYYKIUkMYAmSAJSGbIVJDkCGVz9AgZUr6Z+DMhEe////////9S5nMxMzO1Of///////////////////8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
-        } else {
-            // 不気味な失敗音
-            audio.src = 'data:audio/mp3;base64,SUQzAwAAAAAAFgAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/+5DEAAAGlAFRdAAAIugwma6hAABQQQAAP8AB3/gQOf/n+OIBDv5///CPB/+BAPwQD8Hg/gQHcCgACAAAmZpkQnEhJQACCBiR90CjjjrBKkSJRr9QNYiVIyyrX//rVUaNf/jXWkBCRJA+QkZY1qrGJEiy7//+LkscoO7KupIySjz8JGG3//5bUWUG2UeWVx5UjisViv//86QeS71f//9rEikBEEAQJAEAQBAEhUROTEFNRTMuOTlyAW4AAAAAACAAAFNJT0cAAABPAAAA/w==';
-        }
-        audio.volume = 0.5;
-        audio.play();
-    }
-
-    function playSuccessSound() {
-        const audio = new Audio();
-        audio.src = 'data:audio/mp3;base64,SUQzAwAAAAAAFgAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/+5DEAAAGgAFN1AAAIuozme6FAABQQAAAAQAAP/AAIPPPP+fP/B/mD//5g//B//BAHmCAPB/+YIAcwQAAgAATM0yITiAlIQDAgxI+6BRxV1glSJEsn9QNYiVIyyrX//rVUaNf/jXWkBCRJA+QkZY1qrGJEiy7//+LkscoO7KupIySjz8JGG3//5bUWUG2UeWVx5UjisViv//86QeS71f//9rEikBEiAQJAEAQBAEhUROTEFNRTMuOTlyAW4AAAAAACAAAFNJT0cAAABPAAAA/w==';
-        audio.volume = 0.5;
-        audio.play();
-    }
-
-    function playLevelUpSound() {
-        const audio = new Audio();
-        // 不気味なレベルアップ音
-        audio.src = 'data:audio/mp3;base64,SUQzAwAAAAAAFgAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/+5DEAAAGsAFJdAAAIvwwmO6FAABQQAAAAQAAP/AAIPPPP+fP/B/mD//5g//B//BAHmCAPB/+YIAcwQAAgAAmZpkQnEhJQACCBiR90CjjjrBKkSJRr9QNYiVIyyrX//rVUaNf/jXWkBCRJA+QkZY1qrGJEiy7//+LkscoO7KupIySjz8JGG3//5bUWUG2UeWVx5UjisViv//86QeS71f//9rEikBEEAQJAEAQBAEhUROTEFNRTMuOTlyAW4AAAAAACAAAFNJT0cAAABPAAAA/w==';
-        audio.volume = 0.5;
-        audio.play();
-    }
-
-    function playDeathSound() {
-        const audio = new Audio();
-        // 恐ろしい死亡音
-        audio.src = 'data:audio/mp3;base64,SUQzAwAAAAAAFgAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/+5DEAAAGlAFRdAAAIugwma6hAABQQQAAP8AB3/gQOf/n+OIBDv5///CPB/+BAPwQD8Hg/gQHcCgACAAAmZpkQnEhJQACCBiR90CjjjrBKkSJRr9QNYiVIyyrX//rVUaNf/jXWkBCRJA+QkZY1qrGJEiy7//+LkscoO7KupIySjz8JGG3//5bUWUG2UeWVx5UjisViv//86QeS71f//9rEikBEEAQJAEAQBAEhUROTEFNRTMuOTlyAW4AAAAAACAAAFNJT0cAAABPAAAA/w==';
-        audio.volume = 0.7;
-        audio.play();
-    }
-
-    // キューブ面に暗号シンボルを設定する関数
-    function generateCubeSymbols() {
-        const symbolSets = [
-            // レベル1のシンボルセット（簡単）
-            ['①', '②', '③', '④', '⑤', '⑥'],
-            // レベル2のシンボルセット（中間）
-            ['㋐', '㋑', '㋒', '㋓', '㋔', '㋕'],
-            // レベル3のシンボルセット（難しい）
-            ['◆', '◇', '■', '□', '▲', '△'],
-            // レベル4のシンボルセット（より難しい）
-            ['♠', '♥', '♦', '♣', '★', '☆'],
-            // レベル5のシンボルセット（最も難しい）
-            ['α', 'β', 'γ', 'δ', 'ε', 'ζ']
-        ];
-
-        // 現在のレベルに応じたシンボルセットを選択（レベルの上限を考慮）
-        const levelIndex = Math.min(currentLevel - 1, symbolSets.length - 1);
-        cubeSymbols = [...symbolSets[levelIndex]];
-        
-        // シンボルをシャッフル
-        shuffleArray(cubeSymbols);
-        
-        // ターゲットコードを生成（シンボルの順番をランダムに選択）
-        targetCodes = [];
-        const tempSymbols = [...cubeSymbols];
-        shuffleArray(tempSymbols);
-        targetCodes = tempSymbols.slice(0, 6);
-        
-        // キューブの各面にシンボルを設定
-        cubeFaces.forEach((face, index) => {
-            face.innerHTML = `<div class="cube-symbol">${cubeSymbols[index]}</div>`;
-            face.classList.remove('solved');
-            
-            // レベルに応じたパターンを追加
-            if (currentLevel >= 2) {
-                face.innerHTML += `<div class="cube-pattern level-${currentLevel}"></div>`;
-            }
-        });
-        
-        // 進捗状況とコードセグメントをリセット
-        collectedCodes = [];
-        updateProgress();
-        codeSegments.forEach(segment => {
-            segment.textContent = '?';
-            segment.classList.remove('collected');
-            segment.style.color = 'var(--primary-color)';
-        });
-        
-        // 面の発見状態をリセット
-        gameData.facesDiscovered = [false, false, false, false, false, false];
-    }
-
-    // 配列をシャッフルする関数
-    function shuffleArray(array) {
-        for (let i = array.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [array[i], array[j]] = [array[j], array[i]];
-        }
-    }
-
-    // 解読ボタンの処理
-    function solveCubeFace() {
-        const currentFaceIndex = gameData.currentFace;
-        
-        // この面がまだ発見されていない場合
-        if (!gameData.facesDiscovered[currentFaceIndex]) {
-            // この面を発見済みにマーク
-            gameData.facesDiscovered[currentFaceIndex] = true;
-            
-            // 解読済みエフェクト
-            cubeFaces[currentFaceIndex].classList.add('solved');
-            
-            // 見つけたシンボルをコレクションに追加
-            const discoveredSymbol = cubeSymbols[currentFaceIndex];
-            collectedCodes.push(discoveredSymbol);
-            
-            // コードセグメントの表示を更新
-            const index = collectedCodes.length - 1;
-            if (index < codeSegments.length) {
-                codeSegments[index].textContent = discoveredSymbol;
-                codeSegments[index].classList.add('collected');
-                
-                // ターゲットコードと一致するかチェック
-                const isCorrect = targetCodes[index] === discoveredSymbol;
-                
-                // 正解エフェクト
-                if (isCorrect) {
-                    codeSegments[index].style.color = 'var(--success-color)';
-                    playSolveSound(true);
-                    score += 100 * currentLevel;
-                } else {
-                    codeSegments[index].style.color = 'var(--failure-color)';
-                    playSolveSound(false);
-                    
-                    // 間違った場合は時間を減らすペナルティ
-                    if (timeLeft > 5) {
-                        timeLeft -= 5;
-                        timerDisplay.textContent = timeLeft;
-                        timerDisplay.style.color = 'var(--failure-color)';
-                        
-                        // 画面を一瞬赤く点滅させる
-                        document.body.classList.add('penalty');
-                        setTimeout(() => {
-                            document.body.classList.remove('penalty');
-                        }, 200);
-                    }
-                }
-            }
-            
-            // 進捗状況の更新
-            updateProgress();
-            
-            // すべての面を発見したかチェック
-            if (collectedCodes.length === 6) {
-                handleLevelCompletion();
-            }
-        } else {
-            // すでに発見済みの面
-            playSolveSound(false);
-        }
-    }
-
-    // 進捗状況を更新する関数
-    function updateProgress() {
-        progressDisplay.textContent = `${collectedCodes.length}/6`;
-    }
-
-    // レベル完了処理
-    function handleLevelCompletion() {
-        clearInterval(timer);
-        
-        // 次のレベルに進むかゲーム終了するか
-        if (currentLevel < 5) {
-            // レベルアップモーダルを表示
-            playLevelUpSound();
-            levelUpModal.classList.remove('hidden');
-            
-            // 不気味な演出
-            playCreepySound();
-            document.body.classList.add('level-up');
+    // 温泉の泡エフェクトを作成
+    function createOnsenBubbles() {
+        for (let i = 0; i < 15; i++) {
             setTimeout(() => {
-                document.body.classList.remove('level-up');
-            }, 1000);
-        } else {
-            // ゲーム完了
-            endGame(true);
+                const bubble = document.createElement('div');
+                bubble.classList.add('onsen-bubble');
+                
+                // ランダムなサイズと位置
+                const size = Math.random() * 30 + 10; // 10px〜40px
+                const left = Math.random() * 100; // 0%〜100%
+                
+                bubble.style.width = `${size}px`;
+                bubble.style.height = `${size}px`;
+                bubble.style.left = `${left}%`;
+                bubble.style.bottom = '-20px';
+                bubble.style.animationDuration = `${Math.random() * 8 + 4}s`; // 4s〜12s
+                
+                onsenBubblesContainer.appendChild(bubble);
+                
+                // アニメーション終了後に要素を削除
+                bubble.addEventListener('animationend', () => {
+                    bubble.remove();
+                });
+            }, i * 800); // 時間差を付けて泡を発生
         }
     }
 
-    // 次のレベルに進む処理
-    function goToNextLevel() {
-        currentLevel++;
-        levelUpModal.classList.add('hidden');
+    // 血の滴り効果
+    function createBloodDrop() {
+        const container = document.querySelector('.container');
+        const drop = document.createElement('div');
+        drop.classList.add('death-drop');
         
-        // レベル表示を更新
-        currentLevelDisplay.textContent = currentLevel;
+        // ランダムな位置
+        const left = Math.random() * 100;
+        drop.style.left = `${left}%`;
         
-        // 新しいシンボルを生成
-        generateCubeSymbols();
+        container.appendChild(drop);
         
-        // タイマーをリセット（レベルごとに少し短く）
-        timeLeft = Math.max(20, 60 - (currentLevel - 1) * 10);
-        timerDisplay.textContent = timeLeft;
-        timerDisplay.style.color = 'var(--primary-color)';
-        
-        // タイマーを再開
-        startTimer();
+        // アニメーション終了後に要素を削除
+        drop.addEventListener('animationend', () => {
+            drop.remove();
+        });
     }
 
-    // タイマーを開始する関数
+    // 定期的に血の滴りを生成
+    function startBloodDrops() {
+        return setInterval(() => {
+            if (Math.random() > 0.7) { // 30%の確率で血滴を生成
+                createBloodDrop();
+            }
+        }, 3000);
+    }
+
+    // ゲーム開始準備
+    function prepareGame() {
+        gameState.playerName = playerNameInput.value.trim() || '名無し';
+        gameState.level = 1;
+        gameState.score = 0;
+        gameState.time = 60;
+        gameState.collectedCodes = [];
+        gameState.cubeRotation = { x: -15, y: 15, z: 0 };
+        gameState.gameActive = true;
+        gameState.startTime = Date.now();
+        
+        // 表示を更新
+        updateLevelDisplay();
+        updateTimeDisplay();
+        updateCubeSymbols();
+        resetCodeSegments();
+        
+        // 画面切り替え
+        startScreen.classList.add('hidden');
+        gameScreen.classList.remove('hidden');
+        resultScreen.classList.add('hidden');
+        failureMessage.classList.add('hidden');
+        
+        // タイマー開始
+        startTimer();
+        
+        // 温泉の泡エフェクト開始
+        createOnsenBubbles();
+        setInterval(createOnsenBubbles, 10000);
+        
+        // 血の滴りエフェクト開始
+        startBloodDrops();
+    }
+
+    // タイマー開始
     function startTimer() {
-        timer = setInterval(() => {
-            timeLeft--;
-            timerDisplay.textContent = timeLeft;
+        clearInterval(gameState.timer);
+        gameState.timer = setInterval(() => {
+            gameState.time--;
+            updateTimeDisplay();
             
-            if (timeLeft <= 10) {
-                timerDisplay.style.color = 'var(--failure-color)';
-                
-                // 10秒以下になったら点滅効果
-                if (timeLeft % 2 === 0) {
-                    timerDisplay.style.opacity = '0.5';
-                } else {
-                    timerDisplay.style.opacity = '1';
-                }
-                
-                // 残り5秒以下で不気味な音
-                if (timeLeft <= 5) {
-                    playCreepySound();
-                }
+            // 時間切れの場合
+            if (gameState.time <= 0) {
+                endGame(false);
             }
             
-            if (timeLeft <= 0) {
-                clearInterval(timer);
-                endGame(false);
+            // 残り時間が10秒以下になったら警告表示
+            if (gameState.time <= 10) {
+                timeDisplay.style.color = 'var(--death-red)';
+                timeDisplay.style.animation = 'timerPulse 0.5s infinite';
             }
         }, 1000);
     }
 
-    // ゲーム終了処理
-    function endGame(success) {
-        isGameActive = false;
-        clearInterval(timer);
-        
-        // ゲーム画面を隠して結果画面を表示
-        gameScreen.classList.add('hidden');
-        resultScreen.classList.remove('hidden');
-        
-        // 経過時間を計算
-        const gameEndTime = new Date();
-        const timeDiff = Math.floor((gameEndTime - gameStartTime) / 1000);
-        const minutes = Math.floor(timeDiff / 60).toString().padStart(2, '0');
-        const seconds = (timeDiff % 60).toString().padStart(2, '0');
-        
-        // ミッション成功か失敗かを表示
-        if (success) {
-            missionResultDisplay.textContent = '完了';
-            missionResultDisplay.style.color = 'var(--success-color)';
-            playSuccessSound();
-            successMessage.classList.remove('hidden');
-            failureMessage.classList.add('hidden');
-        } else {
-            missionResultDisplay.textContent = '失敗';
-            missionResultDisplay.style.color = 'var(--failure-color)';
-            playDeathSound();
-            failureMessage.classList.remove('hidden');
-            successMessage.classList.add('hidden');
-            
-            // 失敗時の演出（画面を赤く)
-            document.body.classList.add('game-over');
-            setTimeout(() => {
-                document.body.classList.remove('game-over');
-            }, 2000);
-        }
-        
-        // スコアと時間を表示
-        clearTimeDisplay.textContent = `${minutes}:${seconds}`;
-        finalScoreDisplay.textContent = score;
-        finalLevelDisplay.textContent = currentLevel;
-        
-        // ランキングに追加
-        addToRankings(playerName, currentLevel, score);
+    // レベル表示更新
+    function updateLevelDisplay() {
+        levelDisplay.textContent = gameState.level;
     }
 
-    // ローカルストレージからランキングを読み込む
-    function loadRankings() {
-        const savedRankings = localStorage.getItem('cubeGameRankings');
-        if (savedRankings) {
-            rankings = JSON.parse(savedRankings);
+    // 時間表示更新
+    function updateTimeDisplay() {
+        timeDisplay.textContent = gameState.time;
+    }
+
+    // キューブシンボル更新
+    function updateCubeSymbols() {
+        const symbols = levelSymbols[gameState.level - 1];
+        document.getElementById('front-symbol').textContent = symbols.front;
+        document.getElementById('back-symbol').textContent = symbols.back;
+        document.getElementById('right-symbol').textContent = symbols.right;
+        document.getElementById('left-symbol').textContent = symbols.left;
+        document.getElementById('top-symbol').textContent = symbols.top;
+        document.getElementById('bottom-symbol').textContent = symbols.bottom;
+    }
+
+    // コードセグメントリセット
+    function resetCodeSegments() {
+        codeSegments.forEach(segment => {
+            segment.textContent = '?';
+            segment.classList.remove('collected');
+        });
+    }
+
+    // キューブ回転
+    function rotateCube(direction) {
+        switch (direction) {
+            case 'up':
+                gameState.cubeRotation.x -= 90;
+                break;
+            case 'down':
+                gameState.cubeRotation.x += 90;
+                break;
+            case 'left':
+                gameState.cubeRotation.y -= 90;
+                break;
+            case 'right':
+                gameState.cubeRotation.y += 90;
+                break;
+            case 'rotate-x':
+                gameState.cubeRotation.x += 45;
+                break;
+            case 'rotate-y':
+                gameState.cubeRotation.y += 45;
+                break;
+            case 'rotate-z':
+                gameState.cubeRotation.z += 45;
+                break;
         }
+        
+        cube.style.transform = `rotateX(${gameState.cubeRotation.x}deg) rotateY(${gameState.cubeRotation.y}deg) rotateZ(${gameState.cubeRotation.z}deg)`;
+        
+        // コード発見の可能性
+        if (Math.random() > 0.7) {
+            discoverCode();
+        }
+    }
+
+    // コード発見
+    function discoverCode() {
+        if (gameState.collectedCodes.length >= 4) return;
+        
+        const codes = levelCodes[gameState.level - 1];
+        let newCode;
+        do {
+            newCode = codes[Math.floor(Math.random() * codes.length)];
+        } while (gameState.collectedCodes.includes(newCode));
+        
+        gameState.collectedCodes.push(newCode);
+        
+        // 表示更新
+        codeSegments[gameState.collectedCodes.length - 1].textContent = newCode;
+        codeSegments[gameState.collectedCodes.length - 1].classList.add('collected');
+        
+        // すべてのコード収集時、血の滴り効果を表示
+        if (gameState.collectedCodes.length === 4) {
+            document.querySelectorAll('.cube-face').forEach(face => {
+                face.classList.add('solved');
+            });
+        }
+    }
+
+    // キューブを解く
+    function solveCube() {
+        if (gameState.collectedCodes.length < 4) {
+            // コードが足りない場合の警告
+            alert('すべてのコードを集めてください！');
+            return;
+        }
+        
+        // レベルクリア処理
+        clearInterval(gameState.timer);
+        const timeBonus = gameState.time * 10;
+        const levelBonus = gameState.level * 100;
+        gameState.score += timeBonus + levelBonus;
+        
+        // レベルモーダル表示
+        completedLevelDisplay.textContent = gameState.level;
+        timeBonusDisplay.textContent = gameState.time;
+        levelBonusDisplay.textContent = levelBonus;
+        levelModal.classList.remove('hidden');
+        
+        // 効果音や演出をここに追加
+    }
+
+    // 次のレベルへ
+    function nextLevel() {
+        gameState.level++;
+        gameState.time = 60 - ((gameState.level - 1) * 5); // レベルが上がるごとに制限時間が減少
+        gameState.collectedCodes = [];
+        
+        // キューブの面から血の滴り効果を削除
+        document.querySelectorAll('.cube-face').forEach(face => {
+            face.classList.remove('solved');
+        });
+        
+        // 最終レベルをクリアした場合
+        if (gameState.level > levelSymbols.length) {
+            endGame(true);
+            return;
+        }
+        
+        // 表示を更新
+        updateLevelDisplay();
+        updateTimeDisplay();
+        updateCubeSymbols();
+        resetCodeSegments();
+        
+        // モーダルを閉じる
+        levelModal.classList.add('hidden');
+        
+        // タイマー再開
+        startTimer();
+        
+        // 難易度を上げるための追加効果
+        if (gameState.level >= 3) {
+            // キューブがときどき自動で回転するなどの難易度調整
+            setInterval(() => {
+                if (Math.random() > 0.8 && gameState.gameActive) {
+                    const directions = ['up', 'down', 'left', 'right'];
+                    rotateCube(directions[Math.floor(Math.random() * directions.length)]);
+                }
+            }, 5000);
+        }
+    }
+
+    // ゲーム終了
+    function endGame(isSuccess) {
+        clearInterval(gameState.timer);
+        gameState.gameActive = false;
+        gameState.elapsedTime = Math.floor((Date.now() - gameState.startTime) / 1000);
+        
+        // 失敗メッセージ表示（時間切れの場合）
+        if (!isSuccess) {
+            failureMessage.classList.remove('hidden');
+            setTimeout(() => {
+                // 一定時間後に結果画面へ
+                showResults(isSuccess);
+            }, 3000);
+        } else {
+            showResults(isSuccess);
+        }
+    }
+
+    // 結果表示
+    function showResults(isSuccess) {
+        missionResultDisplay.textContent = isSuccess ? '成功' : '失敗';
+        missionResultDisplay.style.color = isSuccess ? 'var(--success-color)' : 'var(--failure-color)';
+        finalScoreDisplay.textContent = gameState.score;
+        clearTimeDisplay.textContent = gameState.elapsedTime;
+        finalLevelDisplay.textContent = gameState.level;
+        
+        // ランキング更新
+        if (isSuccess || gameState.score > 0) {
+            updateRankings();
+        }
+        
+        // 画面切り替え
+        gameScreen.classList.add('hidden');
+        resultScreen.classList.remove('hidden');
+    }
+
+    // ランキング更新
+    function updateRankings() {
+        const newRank = {
+            name: gameState.playerName,
+            score: gameState.score,
+            level: gameState.level,
+            time: gameState.elapsedTime
+        };
+        
+        rankings.push(newRank);
+        rankings.sort((a, b) => b.score - a.score);
+        
+        if (rankings.length > 10) {
+            rankings = rankings.slice(0, 10);
+        }
+        
         displayRankings();
     }
 
-    // ランキングを表示する
+    // ランキング表示
     function displayRankings() {
         rankingList.innerHTML = '';
         
-        // ランキングをスコアの高い順にソート
-        rankings.sort((a, b) => b.score - a.score);
-        
-        // 上位10位までを表示
-        const topRankings = rankings.slice(0, 10);
-        
-        topRankings.forEach((entry, index) => {
-            const tr = document.createElement('tr');
+        rankings.forEach((rank, index) => {
+            const row = document.createElement('tr');
             
-            const rankTd = document.createElement('td');
-            rankTd.textContent = index + 1;
+            const rankCell = document.createElement('td');
+            rankCell.textContent = index + 1;
             
-            const nameTd = document.createElement('td');
-            nameTd.textContent = entry.name;
+            const nameCell = document.createElement('td');
+            nameCell.textContent = rank.name;
             
-            const levelTd = document.createElement('td');
-            levelTd.textContent = entry.level;
+            const scoreCell = document.createElement('td');
+            scoreCell.textContent = rank.score;
             
-            const scoreTd = document.createElement('td');
-            scoreTd.textContent = entry.score;
+            const levelCell = document.createElement('td');
+            levelCell.textContent = rank.level;
             
-            tr.appendChild(rankTd);
-            tr.appendChild(nameTd);
-            tr.appendChild(levelTd);
-            tr.appendChild(scoreTd);
+            const timeCell = document.createElement('td');
+            timeCell.textContent = `${rank.time}秒`;
             
-            rankingList.appendChild(tr);
+            row.appendChild(rankCell);
+            row.appendChild(nameCell);
+            row.appendChild(scoreCell);
+            row.appendChild(levelCell);
+            row.appendChild(timeCell);
+            
+            rankingList.appendChild(row);
         });
     }
 
-    // ランキングに新しいスコアを追加
-    function addToRankings(name, level, score) {
-        rankings.push({
-            name: name,
-            level: level,
-            score: score,
-            date: new Date().toISOString()
-        });
-        
-        // ローカルストレージに保存
-        localStorage.setItem('cubeGameRankings', JSON.stringify(rankings));
-        
-        // ランキング表示を更新
-        displayRankings();
-    }
-
-    // ゲーム初期化
-    function initGame() {
-        playerName = playerNameInput.value.trim() || '被験者X';
-        
-        // 画面の切り替え
-        startScreen.classList.add('hidden');
-        gameScreen.classList.remove('hidden');
-        resultScreen.classList.add('hidden');
-        
-        // ゲーム変数の初期化
-        currentLevel = 1;
-        score = 0;
-        timeLeft = 60;
-        currentLevelDisplay.textContent = currentLevel;
-        timerDisplay.textContent = timeLeft;
-        timerDisplay.style.color = 'var(--primary-color)';
-        timerDisplay.style.opacity = '1';
-        
-        // キューブの初期化
-        currentCubeRotation = { x: -15, y: 15, z: 0 };
-        updateCubeRotation();
-        gameData.currentFace = 0;
-        
-        // シンボル生成
-        generateCubeSymbols();
-        
-        // ゲーム開始時間を記録
-        gameStartTime = new Date();
-        isGameActive = true;
-        
-        // 不気味な開始音
-        playCreepySound();
-        
-        // タイマー開始
-        startTimer();
-    }
-
-    // イベントリスナーの設定
-    startButton.addEventListener('click', initGame);
-    
-    playAgainButton.addEventListener('click', () => {
+    // イベントリスナー設定
+    startBtn.addEventListener('click', prepareGame);
+    restartBtn.addEventListener('click', () => {
         resultScreen.classList.add('hidden');
         startScreen.classList.remove('hidden');
     });
-    
-    nextLevelBtn.addEventListener('click', goToNextLevel);
+    nextLevelBtn.addEventListener('click', nextLevel);
     
     controlButtons.forEach(button => {
         button.addEventListener('click', () => {
-            if (isGameActive) {
-                const direction = button.getAttribute('data-direction');
-                if (direction === 'solve') {
-                    solveCubeFace();
-                } else {
-                    rotateCube(direction);
-                }
+            const direction = button.getAttribute('data-direction');
+            
+            if (direction === 'solve') {
+                solveCube();
+            } else {
+                rotateCube(direction);
             }
         });
     });
 
     // キーボード操作
     document.addEventListener('keydown', (e) => {
-        if (isGameActive) {
-            switch(e.key) {
-                case 'ArrowUp':
-                    rotateCube('up');
-                    break;
-                case 'ArrowDown':
-                    rotateCube('down');
-                    break;
-                case 'ArrowLeft':
-                    rotateCube('left');
-                    break;
-                case 'ArrowRight':
-                    rotateCube('right');
-                    break;
-                case ' ':
-                case 'Enter':
-                    solveCubeFace();
-                    break;
-            }
+        if (!gameState.gameActive) return;
+        
+        switch (e.key) {
+            case 'ArrowUp':
+                rotateCube('up');
+                break;
+            case 'ArrowDown':
+                rotateCube('down');
+                break;
+            case 'ArrowLeft':
+                rotateCube('left');
+                break;
+            case 'ArrowRight':
+                rotateCube('right');
+                break;
+            case 'x':
+                rotateCube('rotate-x');
+                break;
+            case 'y':
+                rotateCube('rotate-y');
+                break;
+            case 'z':
+                rotateCube('rotate-z');
+                break;
+            case 'Enter':
+                solveCube();
+                break;
         }
     });
 
-    // ゲーム効果用のスタイル
-    const styleElement = document.createElement('style');
-    styleElement.textContent = `
-        .penalty {
-            animation: penaltyFlash 0.2s;
-        }
-        
-        @keyframes penaltyFlash {
-            0%, 100% { background-color: var(--background-color); }
-            50% { background-color: rgba(128, 0, 0, 0.5); }
-        }
-        
-        .level-up {
-            animation: levelUpFlash 1s;
-        }
-        
-        @keyframes levelUpFlash {
-            0%, 100% { background-color: var(--background-color); }
-            50% { background-color: rgba(80, 0, 0, 0.7); }
-        }
-        
-        .game-over {
-            animation: gameOverEffect 2s;
-        }
-        
-        @keyframes gameOverEffect {
-            0% { background-color: var(--background-color); }
-            5% { background-color: rgba(255, 0, 0, 0.8); }
-            15% { background-color: var(--background-color); }
-            25% { background-color: rgba(255, 0, 0, 0.8); }
-            35% { background-color: var(--background-color); }
-            45% { background-color: rgba(255, 0, 0, 0.8); }
-            100% { background-color: var(--background-color); }
-        }
-    `;
-    document.head.appendChild(styleElement);
+    // 初期ランキング表示
+    displayRankings();
+    
+    // 血の滴りエフェクトを定期的に生成
+    const bloodInterval = startBloodDrops();
 
-    // ゲーム開始時の初期化
-    loadRankings();
+    // 定期的に温泉の泡を生成
+    createOnsenBubbles();
+    setInterval(createOnsenBubbles, 10000);
 }); 
