@@ -3,60 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>社員旅行ゲーム</title>
-    <link rel="stylesheet" href="styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+    <title>タップ速度ゲーム - 社員旅行出し物</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
-        <header>
-            <h1>社員旅行ゲーム</h1>
-        </header>
+        <h1>タップ速度チャレンジ</h1>
         
-        <main>
-            <div class="tabs">
-                <button class="tab-btn active" data-tab="game">ゲーム</button>
-                <button class="tab-btn" data-tab="ranking">ランキング</button>
+        <div id="game-container">
+            <div id="start-screen">
+                <p>お名前を入力してください：</p>
+                <input type="text" id="player-name" placeholder="名前を入力">
+                <button id="start-button">ゲーム開始！</button>
             </div>
-
-            <div class="tab-content">
-                <section id="game-section" class="tab-pane active">
-                    <div class="game-container">
-                        <div id="game-controls">
-                            <button id="start-btn" class="btn primary-btn">ゲーム開始</button>
-                            <button id="reset-btn" class="btn secondary-btn">リセット</button>
-                        </div>
-                        <div id="game-area">
-                            <!-- ゲームコンテンツがここに表示されます -->
-                            <p>ゲームを開始するには「ゲーム開始」ボタンを押してください</p>
-                        </div>
-                    </div>
-                </section>
-
-                <section id="ranking-section" class="tab-pane">
-                    <div class="ranking-container">
-                        <h2>ランキング</h2>
-                        <div class="ranking-filter">
-                            <select id="ranking-filter">
-                                <option value="all">すべて</option>
-                                <option value="today">今日</option>
-                                <option value="team">チーム別</option>
-                            </select>
-                        </div>
-                        <div id="ranking-display">
-                            <ul id="scores">
-                                <!-- 得点がここに表示されます -->
-                                <li class="no-scores">まだ記録がありません</li>
-                            </ul>
-                        </div>
-                    </div>
-                </section>
+            
+            <div id="game-screen" class="hidden">
+                <div id="timer">10</div>
+                <button id="tap-button">ここをタップ！</button>
+                <div id="tap-count">0</div>
             </div>
-        </main>
-
-        <footer>
-            <p>&copy; 2023 社員旅行ゲーム</p>
-        </footer>
+            
+            <div id="result-screen" class="hidden">
+                <h2>結果発表</h2>
+                <p>あなたのスコア: <span id="final-score">0</span>回</p>
+                <button id="play-again">もう一度プレイ</button>
+            </div>
+        </div>
+        
+        <div id="ranking-container">
+            <h2>ランキング</h2>
+            <ol id="ranking-list"></ol>
+        </div>
     </div>
     
     <script src="script.js"></script>
