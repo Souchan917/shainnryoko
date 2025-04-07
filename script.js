@@ -21,6 +21,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const levelUpModal = document.getElementById('level-up-modal');
     const nextLevelBtn = document.getElementById('next-level-btn');
     const missionResultDisplay = document.getElementById('mission-result');
+    const successMessage = document.querySelector('.death-message.success');
+    const failureMessage = document.querySelector('.death-message.failure');
 
     // ゲーム変数
     let playerName = '';
@@ -83,10 +85,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // サウンド効果
     function playRotateSound() {
-        // ブラウザ互換性のためにWeb Audio APIを使用するか、単純なAudio要素を使用
         const audio = new Audio();
         audio.src = 'data:audio/mp3;base64,SUQzAwAAAAAAFgAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/+5DEAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAAFAAAJxQBVVVVVVVVVVVVVVVVVVVWqqqqqqqqqqqqqqqqqqqrV1dXV1dXV1dXV1dXV1dXV/////////////////////wAAADJMQU1FMy45OXIBbgAAACAAAABTSU5HAAAATwAAAP/7kMQAAAZUAVl1AAAi6jLLrqFAAFYAAA9CcADLCMsMIDxP4ED/+Lnt+93vfwQIEEeBAYQf/8IODxCPB4fngg//gQIP//iEed//8QQQQ5TQK1Vt5NUAAACIBAAyQJOJmYxFTSxkIwRIWW22lqqoM0QodB/wYCHQl9wQEUwVG3ZiZXEhFn0j/G//6UXhLjw3//h2JZ4fPJxMI0xXV//HkRKU//j0JBcqG4BHiKxBSHUAAFADJEk4mGDMVNLGIjBEhqbbaWqqgzRCl0G/JgIdBn3JAQzBUbdmJlcSEUfSP8b//pReEuPDf/+HYlnh88nEwjTFc3/8eREpT/+PQkFyobgEeIAA';
         audio.volume = 0.3;
+        audio.play();
+    }
+
+    function playCreepySound() {
+        const audio = new Audio();
+        // 不気味なささやき声のような効果音
+        audio.src = 'data:audio/mp3;base64,SUQzAwAAAAAAFgAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/+5DEAAAGmAFN1AAAImAzma6FAABQQAAAAQAAP/AAIPPPP+fP/B/mD//5g//B//BAHmCAPB/+YIAcwQAAgAATM0yITiAlIQDAgxI+6BRxV1glSJEsn9QNYiVIyyrX//rVUaNf/jXWkBCRJA+QkZY1qrGJEiy7//+LkscoO7KupIySjz8JGG3//5bUWUG2UeWVx5UjisViv//86QeS71f//9rEikBEiAQJAEAQBAEhUROTEFNRTMuOTlyAW4AAAAAACAAAFNJT0cAAABPAAAA/w==';
+        audio.volume = 0.7;
         audio.play();
     }
 
@@ -95,9 +104,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (success) {
             audio.src = 'data:audio/mp3;base64,SUQzAwAAAAAAFgAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/+5DEAAAHCAE1dAAAIvgwnLsEABBQQQAAP8AB3/gQOf/n+OIBDv5///CPB/+BAPwQD8Hg/gQHcCgACAAAmJlkgmpDKQKCCxdgYYKIUkMYAmSAJSGbIVJDkCGVz9AgZUr6Z+DMhEe////////9S5nMxMzO1Of///////////////////8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
         } else {
+            // 不気味な失敗音
             audio.src = 'data:audio/mp3;base64,SUQzAwAAAAAAFgAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/+5DEAAAGlAFRdAAAIugwma6hAABQQQAAP8AB3/gQOf/n+OIBDv5///CPB/+BAPwQD8Hg/gQHcCgACAAAmZpkQnEhJQACCBiR90CjjjrBKkSJRr9QNYiVIyyrX//rVUaNf/jXWkBCRJA+QkZY1qrGJEiy7//+LkscoO7KupIySjz8JGG3//5bUWUG2UeWVx5UjisViv//86QeS71f//9rEikBEEAQJAEAQBAEhUROTEFNRTMuOTlyAW4AAAAAACAAAFNJT0cAAABPAAAA/w==';
         }
-        audio.volume = 0.4;
+        audio.volume = 0.5;
         audio.play();
     }
 
@@ -110,8 +120,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function playLevelUpSound() {
         const audio = new Audio();
+        // 不気味なレベルアップ音
         audio.src = 'data:audio/mp3;base64,SUQzAwAAAAAAFgAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/+5DEAAAGsAFJdAAAIvwwmO6FAABQQAAAAQAAP/AAIPPPP+fP/B/mD//5g//B//BAHmCAPB/+YIAcwQAAgAAmZpkQnEhJQACCBiR90CjjjrBKkSJRr9QNYiVIyyrX//rVUaNf/jXWkBCRJA+QkZY1qrGJEiy7//+LkscoO7KupIySjz8JGG3//5bUWUG2UeWVx5UjisViv//86QeS71f//9rEikBEEAQJAEAQBAEhUROTEFNRTMuOTlyAW4AAAAAACAAAFNJT0cAAABPAAAA/w==';
         audio.volume = 0.5;
+        audio.play();
+    }
+
+    function playDeathSound() {
+        const audio = new Audio();
+        // 恐ろしい死亡音
+        audio.src = 'data:audio/mp3;base64,SUQzAwAAAAAAFgAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/+5DEAAAGlAFRdAAAIugwma6hAABQQQAAP8AB3/gQOf/n+OIBDv5///CPB/+BAPwQD8Hg/gQHcCgACAAAmZpkQnEhJQACCBiR90CjjjrBKkSJRr9QNYiVIyyrX//rVUaNf/jXWkBCRJA+QkZY1qrGJEiy7//+LkscoO7KupIySjz8JGG3//5bUWUG2UeWVx5UjisViv//86QeS71f//9rEikBEEAQJAEAQBAEhUROTEFNRTMuOTlyAW4AAAAAACAAAFNJT0cAAABPAAAA/w==';
+        audio.volume = 0.7;
         audio.play();
     }
 
@@ -146,6 +165,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // キューブの各面にシンボルを設定
         cubeFaces.forEach((face, index) => {
             face.innerHTML = `<div class="cube-symbol">${cubeSymbols[index]}</div>`;
+            face.classList.remove('solved');
             
             // レベルに応じたパターンを追加
             if (currentLevel >= 2) {
@@ -159,6 +179,7 @@ document.addEventListener('DOMContentLoaded', () => {
         codeSegments.forEach(segment => {
             segment.textContent = '?';
             segment.classList.remove('collected');
+            segment.style.color = 'var(--primary-color)';
         });
         
         // 面の発見状態をリセット
@@ -182,6 +203,9 @@ document.addEventListener('DOMContentLoaded', () => {
             // この面を発見済みにマーク
             gameData.facesDiscovered[currentFaceIndex] = true;
             
+            // 解読済みエフェクト
+            cubeFaces[currentFaceIndex].classList.add('solved');
+            
             // 見つけたシンボルをコレクションに追加
             const discoveredSymbol = cubeSymbols[currentFaceIndex];
             collectedCodes.push(discoveredSymbol);
@@ -203,6 +227,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     codeSegments[index].style.color = 'var(--failure-color)';
                     playSolveSound(false);
+                    
+                    // 間違った場合は時間を減らすペナルティ
+                    if (timeLeft > 5) {
+                        timeLeft -= 5;
+                        timerDisplay.textContent = timeLeft;
+                        timerDisplay.style.color = 'var(--failure-color)';
+                        
+                        // 画面を一瞬赤く点滅させる
+                        document.body.classList.add('penalty');
+                        setTimeout(() => {
+                            document.body.classList.remove('penalty');
+                        }, 200);
+                    }
                 }
             }
             
@@ -233,6 +270,13 @@ document.addEventListener('DOMContentLoaded', () => {
             // レベルアップモーダルを表示
             playLevelUpSound();
             levelUpModal.classList.remove('hidden');
+            
+            // 不気味な演出
+            playCreepySound();
+            document.body.classList.add('level-up');
+            setTimeout(() => {
+                document.body.classList.remove('level-up');
+            }, 1000);
         } else {
             // ゲーム完了
             endGame(true);
@@ -253,6 +297,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // タイマーをリセット（レベルごとに少し短く）
         timeLeft = Math.max(20, 60 - (currentLevel - 1) * 10);
         timerDisplay.textContent = timeLeft;
+        timerDisplay.style.color = 'var(--primary-color)';
         
         // タイマーを再開
         startTimer();
@@ -266,6 +311,18 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (timeLeft <= 10) {
                 timerDisplay.style.color = 'var(--failure-color)';
+                
+                // 10秒以下になったら点滅効果
+                if (timeLeft % 2 === 0) {
+                    timerDisplay.style.opacity = '0.5';
+                } else {
+                    timerDisplay.style.opacity = '1';
+                }
+                
+                // 残り5秒以下で不気味な音
+                if (timeLeft <= 5) {
+                    playCreepySound();
+                }
             }
             
             if (timeLeft <= 0) {
@@ -295,9 +352,20 @@ document.addEventListener('DOMContentLoaded', () => {
             missionResultDisplay.textContent = '完了';
             missionResultDisplay.style.color = 'var(--success-color)';
             playSuccessSound();
+            successMessage.classList.remove('hidden');
+            failureMessage.classList.add('hidden');
         } else {
             missionResultDisplay.textContent = '失敗';
             missionResultDisplay.style.color = 'var(--failure-color)';
+            playDeathSound();
+            failureMessage.classList.remove('hidden');
+            successMessage.classList.add('hidden');
+            
+            // 失敗時の演出（画面を赤く)
+            document.body.classList.add('game-over');
+            setTimeout(() => {
+                document.body.classList.remove('game-over');
+            }, 2000);
         }
         
         // スコアと時間を表示
@@ -370,7 +438,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ゲーム初期化
     function initGame() {
-        playerName = playerNameInput.value.trim() || 'エージェントX';
+        playerName = playerNameInput.value.trim() || '被験者X';
         
         // 画面の切り替え
         startScreen.classList.add('hidden');
@@ -384,6 +452,7 @@ document.addEventListener('DOMContentLoaded', () => {
         currentLevelDisplay.textContent = currentLevel;
         timerDisplay.textContent = timeLeft;
         timerDisplay.style.color = 'var(--primary-color)';
+        timerDisplay.style.opacity = '1';
         
         // キューブの初期化
         currentCubeRotation = { x: -15, y: 15, z: 0 };
@@ -396,6 +465,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // ゲーム開始時間を記録
         gameStartTime = new Date();
         isGameActive = true;
+        
+        // 不気味な開始音
+        playCreepySound();
         
         // タイマー開始
         startTimer();
@@ -447,6 +519,43 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     });
+
+    // ゲーム効果用のスタイル
+    const styleElement = document.createElement('style');
+    styleElement.textContent = `
+        .penalty {
+            animation: penaltyFlash 0.2s;
+        }
+        
+        @keyframes penaltyFlash {
+            0%, 100% { background-color: var(--background-color); }
+            50% { background-color: rgba(128, 0, 0, 0.5); }
+        }
+        
+        .level-up {
+            animation: levelUpFlash 1s;
+        }
+        
+        @keyframes levelUpFlash {
+            0%, 100% { background-color: var(--background-color); }
+            50% { background-color: rgba(80, 0, 0, 0.7); }
+        }
+        
+        .game-over {
+            animation: gameOverEffect 2s;
+        }
+        
+        @keyframes gameOverEffect {
+            0% { background-color: var(--background-color); }
+            5% { background-color: rgba(255, 0, 0, 0.8); }
+            15% { background-color: var(--background-color); }
+            25% { background-color: rgba(255, 0, 0, 0.8); }
+            35% { background-color: var(--background-color); }
+            45% { background-color: rgba(255, 0, 0, 0.8); }
+            100% { background-color: var(--background-color); }
+        }
+    `;
+    document.head.appendChild(styleElement);
 
     // ゲーム開始時の初期化
     loadRankings();
