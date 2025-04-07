@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>社員旅行ゲーム</title>
     <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
 </head>
 <body>
     <div class="container">
@@ -13,25 +14,44 @@
         </header>
         
         <main>
-            <section id="game-section">
-                <h2>ゲーム</h2>
-                <div class="game-container">
-                    <div id="game-controls">
-                        <button id="start-btn" class="btn">ゲーム開始</button>
-                        <button id="reset-btn" class="btn">リセット</button>
+            <div class="tabs">
+                <button class="tab-btn active" data-tab="game">ゲーム</button>
+                <button class="tab-btn" data-tab="ranking">ランキング</button>
+            </div>
+
+            <div class="tab-content">
+                <section id="game-section" class="tab-pane active">
+                    <div class="game-container">
+                        <div id="game-controls">
+                            <button id="start-btn" class="btn primary-btn">ゲーム開始</button>
+                            <button id="reset-btn" class="btn secondary-btn">リセット</button>
+                        </div>
+                        <div id="game-area">
+                            <!-- ゲームコンテンツがここに表示されます -->
+                            <p>ゲームを開始するには「ゲーム開始」ボタンを押してください</p>
+                        </div>
                     </div>
-                    <div id="game-area">
-                        <!-- ゲームコンテンツがここに表示されます -->
-                        <p>ゲームを開始するには「ゲーム開始」ボタンを押してください</p>
+                </section>
+
+                <section id="ranking-section" class="tab-pane">
+                    <div class="ranking-container">
+                        <h2>ランキング</h2>
+                        <div class="ranking-filter">
+                            <select id="ranking-filter">
+                                <option value="all">すべて</option>
+                                <option value="today">今日</option>
+                                <option value="team">チーム別</option>
+                            </select>
+                        </div>
+                        <div id="ranking-display">
+                            <ul id="scores">
+                                <!-- 得点がここに表示されます -->
+                                <li class="no-scores">まだ記録がありません</li>
+                            </ul>
+                        </div>
                     </div>
-                    <div id="score-board">
-                        <h3>得点表</h3>
-                        <ul id="scores">
-                            <!-- 得点がここに表示されます -->
-                        </ul>
-                    </div>
-                </div>
-            </section>
+                </section>
+            </div>
         </main>
 
         <footer>
