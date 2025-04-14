@@ -165,36 +165,12 @@ button:hover {
     margin-bottom: 30px;
 }
 
-/* マスター画面の3列レイアウト */
-.master-panels-container {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 15px;
-    margin-bottom: 20px;
-    justify-content: space-between;
-}
-
-.panel {
+.players-list {
     background-color: #f5f5f5;
     padding: 15px;
     border-radius: 4px;
+    margin: 20px 0;
     text-align: left;
-    flex: 1;
-    min-width: 30%;
-}
-
-.panel h3 {
-    font-size: 1rem;
-    margin-bottom: 10px;
-    text-align: center;
-    color: #333;
-    border-bottom: 1px solid #ddd;
-    padding-bottom: 5px;
-}
-
-/* プレイヤーリスト */
-.players-list {
-    background-color: #f5f5f5;
 }
 
 #connected-players {
@@ -240,113 +216,6 @@ button:hover {
 .player-status.incorrect {
     background-color: #ffebee;
     color: #f44336;
-}
-
-/* ポイントランキング */
-.points-ranking {
-    background-color: #f5f5f5;
-}
-
-#points-ranking-list {
-    list-style-type: none;
-    padding: 0;
-}
-
-#points-ranking-list li {
-    background-color: white;
-    padding: 8px 15px;
-    margin: 5px 0;
-    border-radius: 4px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.rank {
-    font-weight: bold;
-    min-width: 30px;
-    text-align: center;
-    color: #555;
-}
-
-.rank-1 {
-    color: gold;
-}
-
-.rank-2 {
-    color: silver;
-}
-
-.rank-3 {
-    color: #CD7F32; /* ブロンズ */
-}
-
-/* 正解ランキング */
-.answer-ranking {
-    background-color: #f5f5f5;
-}
-
-#answer-ranking-list {
-    list-style-type: none;
-    padding: 0;
-}
-
-#answer-ranking-list li {
-    background-color: white;
-    padding: 8px 15px;
-    margin: 5px 0;
-    border-radius: 4px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.answer-time-ranking {
-    font-weight: bold;
-    color: #4CAF50;
-}
-
-/* 解答状況 */
-.answers-container {
-    margin-top: 20px;
-    background-color: #f5f5f5;
-    padding: 15px;
-    border-radius: 4px;
-    text-align: left;
-}
-
-#player-answers {
-    list-style-type: none;
-    padding: 0;
-}
-
-#player-answers li {
-    display: flex;
-    justify-content: space-between;
-    background-color: white;
-    padding: 8px 15px;
-    margin: 5px 0;
-    border-radius: 4px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-}
-
-#player-answers li.correct {
-    border-left: 4px solid #4CAF50;
-}
-
-#player-answers li.incorrect {
-    border-left: 4px solid #f44336;
-}
-
-#player-answers .player-name {
-    font-weight: bold;
-}
-
-#player-answers .answer-time {
-    color: #666;
-    font-size: 14px;
 }
 
 /* ゲームコンテンツ */
@@ -485,4 +354,45 @@ button:hover {
     margin-top: 5px;
     font-size: 14px;
     color: #666;
+}
+
+/* マスター画面の解答状況表示 */
+.answers-container {
+    margin-top: 20px;
+    background-color: #f5f5f5;
+    padding: 15px;
+    border-radius: 4px;
+    text-align: left;
+}
+
+#player-answers {
+    list-style-type: none;
+    padding: 0;
+}
+
+#player-answers li {
+    display: flex;
+    justify-content: space-between;
+    background-color: white;
+    padding: 8px 15px;
+    margin: 5px 0;
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+#player-answers li.correct {
+    border-left: 4px solid #4CAF50;
+}
+
+#player-answers li.incorrect {
+    border-left: 4px solid #f44336;
+}
+
+#player-answers .player-name {
+    font-weight: bold;
+}
+
+#player-answers .answer-time {
+    color: #666;
+    font-size: 14px;
 } 
