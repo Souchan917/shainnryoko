@@ -59,29 +59,41 @@
         </div>
 
         <!-- マスター画面 -->
-        <div id="master-panel" class="hidden-screen">
-            <h2>マスター画面</h2>
-            <div class="master-controls">
+        <div id="master-screen" class="screen">
+            <h1>ゲームマスター画面</h1>
+            <div id="status-message"></div>
+            
+            <div class="master-panels-container">
+                <!-- 接続中プレイヤーパネル -->
+                <div class="panel players-list">
+                    <h2>接続中のプレイヤー</h2>
+                    <ul id="connected-players">
+                        <!-- プレイヤーリスト -->
+                    </ul>
+                </div>
+                
+                <!-- ポイントランキングパネル -->
+                <div class="panel points-ranking">
+                    <h2>ポイントランキング</h2>
+                    <ul id="points-ranking-list">
+                        <!-- ポイントランキング -->
+                    </ul>
+                </div>
+                
+                <!-- 回答時間ランキングパネル -->
+                <div class="panel answer-ranking">
+                    <h2>回答時間ランキング</h2>
+                    <ul id="answer-ranking-list">
+                        <!-- 回答時間ランキング -->
+                    </ul>
+                </div>
+            </div>
+            
+            <div id="master-controls">
                 <button id="start-game">ゲームスタート</button>
-                <button id="reset-game">リセット</button>
-                <div id="status-message"></div>
+                <button id="reset-game">ゲームリセット</button>
+                <button id="to-registration">登録画面に戻る</button>
             </div>
-            <div class="players-list">
-                <h3>参加プレイヤー</h3>
-                <ul id="connected-players">
-                    <!-- プレイヤーリストがここに表示されます -->
-                </ul>
-            </div>
-            
-            <!-- 解答状況表示エリア -->
-            <div class="answers-container">
-                <h3>解答状況</h3>
-                <ul id="player-answers">
-                    <!-- プレイヤーの解答状況がここに表示されます -->
-                </ul>
-            </div>
-            
-            <button id="back-to-registration" class="small-button">登録画面に戻る</button>
         </div>
     </div>
 

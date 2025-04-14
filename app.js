@@ -1017,6 +1017,107 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     });
     
+    /**
+     * ポイントランキングを更新する
+     * @param {Array} playersData プレイヤーデータの配列
+     */
+    function updatePointsRanking(playersData) {
+      const rankingList = document.getElementById('points-ranking-list');
+      if (!rankingList) return;
+
+      // ポイント順にソート
+      const sortedPlayers = [...playersData].sort((a, b) => b.points - a.points);
+      
+      rankingList.innerHTML = '';
+      
+      sortedPlayers.forEach((player, index) => {
+        const rankClass = index < 3 ? `rank-${index + 1}` : '';
+        const li = document.createElement('li');
+        li.innerHTML = `
+          <span class="rank ${rankClass}">${index + 1}</span>
+          <span class="player-name">${player.name}</span>
+          <span class="player-points">${player.points}pt</span>
+        `;
+        rankingList.appendChild(li);
+      });
+    }
+
+    /**
+     * 現在のステージの正解時間ランキングを更新する
+     * @param {Object} gameState 現在のゲームステート
+     * @param {Array} playersData プレイヤーデータの配列
+     */
+    function updateAnswerRanking(gameState, playersData) {
+      const rankingList = document.getElementById('answer-ranking-list');
+      if (!rankingList) return;
+
+      // 現在のステージで正解したプレイヤーを抽出
+      const correctPlayers = playersData.filter(player => {
+        return gameState.correctPlayers && 
+               gameState.correctPlayers.includes(player.id) &&
+               player.answerTime;
+      });
+
+      // 回答時間順にソート
+      const sortedPlayers = [...correctPlayers].sort((a, b) => a.answerTime - b.answerTime);
+      
+      rankingList.innerHTML = '';
+      
+      if (sortedPlayers.length === 0) {
+        const li = document.createElement('li');
+        li.textContent = '正解者はまだいません';
+        rankingList.appendChild(li);
+        return;
+      }
+      
+      sortedPlayers.forEach((player, index) => {
+        const li = document.createElement('li');
+        // 回答時間をフォーマット（秒単位で表示）
+        const answerTimeInSeconds = (player.answerTime / 1000).toFixed(2);
+        li.innerHTML = `
+          <span class="rank">${index + 1}</span>
+          <span class="player-name">${player.name}</span>
+          <span class="answer-time-ranking">${answerTimeInSeconds}秒</span>
+        `;
+        rankingList.appendChild(li);
+      });
+    }
+
+    /**
+     * 接続中のプレイヤー一覧を更新する
+     * @param {Array} playersData プレイヤーデータの配列
+     */
+    function updateConnectedPlayers(playersData) {
+      const playersList = document.getElementById('connected-players');
+      if (!playersList) return;
+      
+      playersList.innerHTML = '';
+      
+      if (playersData.length === 0) {
+        const li = document.createElement('li');
+        li.textContent = '接続中のプレイヤーはいません';
+        playersList.appendChild(li);
+        return;
+      }
+      
+      playersData.forEach(player => {
+        const li = document.createElement('li');
+        const statusClass = gameState.correctPlayers && gameState.correctPlayers.includes(player.id) ? 'correct' : '';
+        li.innerHTML = `
+          <span class="player-name">${player.name}</span>
+          <span class="player-status ${statusClass}">${player.points}pt</span>
+        `;
+        playersList.appendChild(li);
+      });
+    }
+
+    /**
+     * マスター画面のプレイヤー回答状況を更新する
+     */
+    function updatePlayerAnswers() {
+      // ... existing code ...
+    }
+    
   } catch (error) {
     console.error("App initialization error:", error);
     alert("アプリケーションエラー: " + error.message);
