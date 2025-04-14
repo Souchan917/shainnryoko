@@ -8,6 +8,10 @@ document.addEventListener('DOMContentLoaded', function() {
     // コレクション参照
     const gameStateCollection = db.collection('gameState');
     const playersCollection = db.collection('players');
+    const answersCollection = db.collection('answers');
+    
+    // ゲームの正解（今回は「りんご」に設定）
+    const CORRECT_ANSWER = "りんご";
     
     // 初期設定 - gameStateコレクションにcurrentドキュメントが存在しない場合は作成
     gameStateCollection.doc('current').get()
@@ -16,7 +20,8 @@ document.addEventListener('DOMContentLoaded', function() {
           return gameStateCollection.doc('current').set({
             gameStarted: false,
             imagePath: '',
-            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+            correctAnswer: CORRECT_ANSWER // 正解を追加
           });
         }
       })
@@ -41,14 +46,27 @@ document.addEventListener('DOMContentLoaded', function() {
     const statusMessage = document.getElementById('status-message') || document.createElement('div'); // ステータスメッセージ要素がない場合の対策
     const connectedPlayersList = document.getElementById('connected-players');
     const backToRegistrationBtns = document.querySelectorAll('#back-to-registration');
+    
+    // 解答関連の要素
+    const answerSection = document.getElementById('answer-section');
+    const playerAnswer = document.getElementById('player-answer');
+    const submitAnswerBtn = document.getElementById('submit-answer-btn');
+    const answerResult = document.getElementById('answer-result');
+    const answerTime = document.getElementById('answer-time');
+    const playerAnswersList = document.getElementById('player-answers');
   
     // 現在のプレイヤー情報
     let currentPlayer = {
       id: null,
       name: '',
       isActive: false,
-      joinedAt: null
+      joinedAt: null,
+      answered: false, // 解答済みかどうか
+      answerCorrect: false // 正解したかどうか
     };
+    
+    // 解答した時刻を記録するための変数
+    let gameStartTime = null;
   
     // 画面切り替え関数
     function showScreen(screenId) {
@@ -83,7 +101,9 @@ document.addEventListener('DOMContentLoaded', function() {
         id: playerId,
         name: playerName,
         isActive: true,
-        joinedAt: firebase.firestore.FieldValue.serverTimestamp()
+        joinedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        answered: false,
+        answerCorrect: false
       };
       
       // Firestoreにプレイヤー情報を保存
@@ -113,9 +133,13 @@ document.addEventListener('DOMContentLoaded', function() {
     goToMasterBtn.addEventListener('click', () => {
       showScreen('master-panel');
       updatePlayersList(); // プレイヤーリストを更新
+      updateAnswersList(); // 解答状況を更新
       
-      // 定期的にプレイヤーリストを更新
-      setInterval(updatePlayersList, 5000);
+      // 定期的にプレイヤーリストと解答状況を更新
+      setInterval(() => {
+        updatePlayersList();
+        updateAnswersList();
+      }, 5000);
     });
   
     // 登録画面に戻る処理
@@ -131,7 +155,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 id: null,
                 name: '',
                 isActive: false,
-                joinedAt: null
+                joinedAt: null,
+                answered: false,
+                answerCorrect: false
               };
             })
             .catch(error => {
@@ -157,6 +183,28 @@ document.addEventListener('DOMContentLoaded', function() {
               const player = doc.data();
               const listItem = document.createElement('li');
               listItem.textContent = player.name;
+              
+              // 解答済みのプレイヤーにはステータスを表示
+              if (player.answered) {
+                const statusSpan = document.createElement('span');
+                statusSpan.style.marginLeft = '10px';
+                statusSpan.style.fontSize = '12px';
+                statusSpan.style.padding = '2px 5px';
+                statusSpan.style.borderRadius = '3px';
+                
+                if (player.answerCorrect) {
+                  statusSpan.textContent = '正解';
+                  statusSpan.style.backgroundColor = '#e8f5e9';
+                  statusSpan.style.color = '#4CAF50';
+                } else {
+                  statusSpan.textContent = '不正解';
+                  statusSpan.style.backgroundColor = '#ffebee';
+                  statusSpan.style.color = '#f44336';
+                }
+                
+                listItem.appendChild(statusSpan);
+              }
+              
               connectedPlayersList.appendChild(listItem);
             });
           } else {
@@ -170,6 +218,58 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .catch(error => {
           console.error('プレイヤーリスト取得エラー:', error);
+        });
+    }
+    
+    // 解答状況を更新する関数
+    function updateAnswersList() {
+      answersCollection.orderBy('answeredAt', 'asc').get()
+        .then(snapshot => {
+          // リストをクリア
+          playerAnswersList.innerHTML = '';
+          
+          if (!snapshot.empty) {
+            // 解答一覧を表示
+            snapshot.forEach(doc => {
+              const answer = doc.data();
+              const listItem = document.createElement('li');
+              
+              if (answer.isCorrect) {
+                listItem.classList.add('correct');
+              } else {
+                listItem.classList.add('incorrect');
+              }
+              
+              // プレイヤー名と解答内容
+              const playerNameSpan = document.createElement('span');
+              playerNameSpan.classList.add('player-name');
+              playerNameSpan.textContent = `${answer.playerName}: "${answer.answer}"`;
+              
+              // 解答時間
+              const answerTimeSpan = document.createElement('span');
+              answerTimeSpan.classList.add('answer-time');
+              
+              if (answer.answerTime !== undefined) {
+                answerTimeSpan.textContent = `${answer.answerTime.toFixed(2)}秒`;
+              } else {
+                answerTimeSpan.textContent = '記録なし';
+              }
+              
+              listItem.appendChild(playerNameSpan);
+              listItem.appendChild(answerTimeSpan);
+              playerAnswersList.appendChild(listItem);
+            });
+          } else {
+            // 解答がない場合
+            const listItem = document.createElement('li');
+            listItem.textContent = 'まだ解答はありません';
+            listItem.style.fontStyle = 'italic';
+            listItem.style.color = '#666';
+            playerAnswersList.appendChild(listItem);
+          }
+        })
+        .catch(error => {
+          console.error('解答リスト取得エラー:', error);
         });
     }
   
@@ -190,6 +290,78 @@ document.addEventListener('DOMContentLoaded', function() {
         }
       }
     });
+    
+    // 解答送信処理
+    submitAnswerBtn.addEventListener('click', () => {
+      submitAnswer();
+    });
+    
+    // Enter キーで解答送信
+    playerAnswer.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        submitAnswer();
+      }
+    });
+    
+    // 解答送信の共通処理
+    function submitAnswer() {
+      // ゲームが開始されていない、または既に解答済みの場合は何もしない
+      if (!gameStartTime || currentPlayer.answered) {
+        return;
+      }
+      
+      const answer = playerAnswer.value.trim().toLowerCase(); // 小文字に変換して比較
+      if (!answer) {
+        return;
+      }
+      
+      // 解答時間を計算（秒単位）
+      const now = Date.now();
+      const answerTime = (now - gameStartTime) / 1000;
+      
+      // 正解かどうかをチェック
+      const isCorrect = answer === CORRECT_ANSWER.toLowerCase();
+      
+      // プレイヤー情報を更新
+      currentPlayer.answered = true;
+      currentPlayer.answerCorrect = isCorrect;
+      
+      // Firestoreのプレイヤー情報を更新
+      playersCollection.doc(currentPlayer.id).update({
+        answered: true,
+        answerCorrect: isCorrect
+      });
+      
+      // 解答情報をFirestoreに保存
+      const answerData = {
+        playerId: currentPlayer.id,
+        playerName: currentPlayer.name,
+        answer: answer,
+        isCorrect: isCorrect,
+        answerTime: answerTime,
+        answeredAt: firebase.firestore.FieldValue.serverTimestamp()
+      };
+      
+      answersCollection.doc(currentPlayer.id).set(answerData)
+        .then(() => {
+          console.log('解答を記録しました', answerData);
+          
+          // 解答結果を表示
+          answerResult.textContent = isCorrect ? '正解です！' : '残念、不正解です';
+          answerResult.className = isCorrect ? 'correct' : 'incorrect';
+          
+          // 解答時間を表示
+          answerTime.textContent = `解答時間: ${answerTime.toFixed(2)}秒`;
+          
+          // 解答入力を無効化
+          playerAnswer.disabled = true;
+          submitAnswerBtn.disabled = true;
+        })
+        .catch(error => {
+          console.error('解答の記録に失敗:', error);
+          alert('解答の送信に失敗しました。もう一度お試しください。');
+        });
+    }
   
     // マスター側：ゲーム開始
     startGameBtn.addEventListener('click', () => {
@@ -201,101 +373,158 @@ document.addEventListener('DOMContentLoaded', function() {
         const imagePath = baseUrl + 'puzzle.png';
         console.log("Image path:", imagePath);
         
-        // ゲームの状態オブジェクト
-        const gameState = {
-          gameStarted: true,
-          imagePath: imagePath,
-          timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        };
-        
-        // ローカルストレージにも状態を保存（フォールバック用）
-        localStorage.setItem('gameState', JSON.stringify({
-          gameStarted: true,
-          imagePath: imagePath,
-          timestamp: Date.now()
-        }));
-        
-        // ゲーム状態を更新（gameStateドキュメントに保存）
-        gameStateCollection.doc('current').set(gameState)
-        .then(() => {
-            console.log("Game state updated successfully");
-            if (statusMessage) statusMessage.textContent = "ゲームが開始されました！";
+        // 解答コレクションをクリア
+        deleteAllAnswers()
+          .then(() => {
+            console.log('すべての解答をクリアしました');
             
-            // データベースから最新の状態を読み込んで確認
-            return gameStateCollection.doc('current').get();
-        })
-        .then((doc) => {
-            if (doc.exists) {
-              console.log("確認: 書き込まれたデータ:", doc.data());
-            }
+            // 全プレイヤーの解答状態をリセット
+            return resetAllPlayerAnswers();
+          })
+          .then(() => {
+            console.log('全プレイヤーの解答状態をリセットしました');
             
-            // ローカル表示も更新
-            updateGameDisplay(gameState);
-        })
-        .catch(error => {
-            console.error("Error updating game state:", error);
-            if (statusMessage) statusMessage.textContent = "Firestore更新エラー (ローカルモードで動作中): " + error.message;
-            
-            // Firestore更新に失敗した場合でもローカル表示を更新
-            updateGameDisplay({
+            // ゲームの状態オブジェクト
+            const gameState = {
               gameStarted: true,
               imagePath: imagePath,
-              timestamp: Date.now()
-            });
-        });
+              timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+              correctAnswer: CORRECT_ANSWER
+            };
+            
+            // ローカルストレージにも状態を保存（フォールバック用）
+            localStorage.setItem('gameState', JSON.stringify({
+              gameStarted: true,
+              imagePath: imagePath,
+              timestamp: Date.now(),
+              correctAnswer: CORRECT_ANSWER
+            }));
+            
+            // ゲーム状態を更新（gameStateドキュメントに保存）
+            return gameStateCollection.doc('current').set(gameState);
+          })
+          .then(() => {
+              console.log("Game state updated successfully");
+              if (statusMessage) statusMessage.textContent = "ゲームが開始されました！";
+              
+              // データベースから最新の状態を読み込んで確認
+              return gameStateCollection.doc('current').get();
+          })
+          .then((doc) => {
+              if (doc.exists) {
+                console.log("確認: 書き込まれたデータ:", doc.data());
+              }
+              
+              // ローカル表示も更新
+              updateGameDisplay({
+                gameStarted: true,
+                imagePath: imagePath,
+                timestamp: Date.now(),
+                correctAnswer: CORRECT_ANSWER
+              });
+              
+              // 解答リストを更新
+              updateAnswersList();
+          })
+          .catch(error => {
+              console.error("Error updating game state:", error);
+              if (statusMessage) statusMessage.textContent = "Firestore更新エラー (ローカルモードで動作中): " + error.message;
+          });
     });
+    
+    // すべての解答を削除する関数
+    function deleteAllAnswers() {
+      return answersCollection.get()
+        .then(snapshot => {
+          const batch = db.batch();
+          
+          snapshot.forEach(doc => {
+            batch.delete(doc.ref);
+          });
+          
+          return batch.commit();
+        });
+    }
+    
+    // すべてのプレイヤーの解答状態をリセットする関数
+    function resetAllPlayerAnswers() {
+      return playersCollection.get()
+        .then(snapshot => {
+          const batch = db.batch();
+          
+          snapshot.forEach(doc => {
+            batch.update(doc.ref, {
+              answered: false,
+              answerCorrect: false
+            });
+          });
+          
+          return batch.commit();
+        });
+    }
   
     // マスター側：リセット
     resetGameBtn.addEventListener('click', () => {
         console.log("Resetting game...");
         if (statusMessage) statusMessage.textContent = "リセット中...";
         
-        // ゲームの状態オブジェクト
-        const gameState = {
-          gameStarted: false,
-          imagePath: '',
-          timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        };
-        
-        // ローカルストレージの状態もリセット
-        localStorage.setItem('gameState', JSON.stringify({
-          gameStarted: false,
-          imagePath: '',
-          timestamp: Date.now()
-        }));
-        
-        // ゲーム状態をリセット
-        gameStateCollection.doc('current').set(gameState)
-        .then(() => {
-            console.log("Game state reset successfully");
-            if (statusMessage) statusMessage.textContent = "リセットされました";
+        // 解答コレクションをクリア
+        deleteAllAnswers()
+          .then(() => {
+            console.log('すべての解答をクリアしました');
             
-            // データベースから最新の状態を読み込んで確認
-            return gameStateCollection.doc('current').get();
-        })
-        .then((doc) => {
-            if (doc.exists) {
-              console.log("確認: リセット後のデータ:", doc.data());
-            }
+            // 全プレイヤーの解答状態をリセット
+            return resetAllPlayerAnswers();
+          })
+          .then(() => {
+            console.log('全プレイヤーの解答状態をリセットしました');
             
-            // ローカル表示も更新
-            updateGameDisplay({
+            // ゲームの状態オブジェクト
+            const gameState = {
               gameStarted: false,
               imagePath: '',
-              timestamp: Date.now()
-            });
-        })
-        .catch(error => {
-            console.error("Error resetting game state:", error);
-            if (statusMessage) statusMessage.textContent = "Firestore リセットエラー (ローカルモードで動作中): " + error.message;
+              timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+              correctAnswer: CORRECT_ANSWER
+            };
             
-            // Firestore更新に失敗した場合でもローカル表示を更新
-            updateGameDisplay({
+            // ローカルストレージの状態もリセット
+            localStorage.setItem('gameState', JSON.stringify({
               gameStarted: false,
               imagePath: '',
-              timestamp: Date.now()
-            });
-        });
+              timestamp: Date.now(),
+              correctAnswer: CORRECT_ANSWER
+            }));
+            
+            // ゲーム状態をリセット
+            return gameStateCollection.doc('current').set(gameState);
+          })
+          .then(() => {
+              console.log("Game state reset successfully");
+              if (statusMessage) statusMessage.textContent = "リセットされました";
+              
+              // データベースから最新の状態を読み込んで確認
+              return gameStateCollection.doc('current').get();
+          })
+          .then((doc) => {
+              if (doc.exists) {
+                console.log("確認: リセット後のデータ:", doc.data());
+              }
+              
+              // ローカル表示も更新
+              updateGameDisplay({
+                gameStarted: false,
+                imagePath: '',
+                timestamp: Date.now(),
+                correctAnswer: CORRECT_ANSWER
+              });
+              
+              // 解答リストを更新
+              updateAnswersList();
+          })
+          .catch(error => {
+              console.error("Error resetting game state:", error);
+              if (statusMessage) statusMessage.textContent = "Firestore リセットエラー (ローカルモードで動作中): " + error.message;
+          });
     });
   
     // プレイヤー側：ゲーム状態の監視
@@ -324,7 +553,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const initialState = {
               gameStarted: false,
               imagePath: '',
-              timestamp: Date.now()
+              timestamp: Date.now(),
+              correctAnswer: CORRECT_ANSWER
             };
             updateGameDisplay(initialState);
           }
@@ -369,6 +599,30 @@ document.addEventListener('DOMContentLoaded', function() {
           contentP.textContent = 'ゲームが開始されました！';
           contentP.classList.add('game-started');
           
+          // 解答欄を表示
+          if (answerSection) {
+            answerSection.classList.remove('hidden');
+            
+            // プレイヤーが既に解答済みの場合
+            if (currentPlayer.answered) {
+              playerAnswer.disabled = true;
+              submitAnswerBtn.disabled = true;
+            } else {
+              playerAnswer.disabled = false;
+              submitAnswerBtn.disabled = false;
+              
+              // 解答結果表示をクリア
+              answerResult.textContent = '';
+              answerResult.className = '';
+              answerTime.textContent = '';
+            }
+          }
+          
+          // ゲーム開始時刻を記録（解答時間計算用）
+          if (!gameStartTime) {
+            gameStartTime = Date.now();
+          }
+          
           // 画像を表示（画像がない場合はフォールバック）
           console.log("Showing image:", gameState.imagePath);
           if (!gameState.imagePath || gameState.imagePath === '') {
@@ -404,6 +658,35 @@ document.addEventListener('DOMContentLoaded', function() {
           contentP.textContent = 'マスターがゲームを開始するのを待っています...';
           contentP.classList.remove('game-started');
           imageContainer.innerHTML = '';
+          
+          // 解答欄を非表示
+          if (answerSection) {
+            answerSection.classList.add('hidden');
+          }
+          
+          // 解答関連の状態をリセット
+          if (playerAnswer) playerAnswer.value = '';
+          if (answerResult) {
+            answerResult.textContent = '';
+            answerResult.className = '';
+          }
+          if (answerTime) answerTime.textContent = '';
+          
+          // ゲーム開始時刻をリセット
+          gameStartTime = null;
+          
+          // 現在のプレイヤーの解答状態をリセット（プレイヤーの場合）
+          if (currentPlayer.id) {
+            currentPlayer.answered = false;
+            currentPlayer.answerCorrect = false;
+            
+            // Firestoreのプレイヤー情報も更新
+            playersCollection.doc(currentPlayer.id).update({
+              answered: false,
+              answerCorrect: false
+            }).catch(console.error);
+          }
+          
           console.log("Waiting for game to start");
       }
     }

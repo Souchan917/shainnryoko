@@ -43,6 +43,16 @@
                 <div id="image-container">
                     <!-- 画像がここに表示されます -->
                 </div>
+                
+                <!-- 解答欄を追加 -->
+                <div id="answer-section" class="hidden">
+                    <div class="form-group">
+                        <input type="text" id="player-answer" placeholder="答えを入力してください" autocomplete="off">
+                        <button id="submit-answer-btn">回答する</button>
+                    </div>
+                    <div id="answer-result"></div>
+                    <div id="answer-time"></div>
+                </div>
             </div>
             <button id="back-to-registration" class="small-button">名前変更</button>
         </div>
@@ -61,6 +71,15 @@
                     <!-- プレイヤーリストがここに表示されます -->
                 </ul>
             </div>
+            
+            <!-- 解答状況表示エリア -->
+            <div class="answers-container">
+                <h3>解答状況</h3>
+                <ul id="player-answers">
+                    <!-- プレイヤーの解答状況がここに表示されます -->
+                </ul>
+            </div>
+            
             <button id="back-to-registration" class="small-button">登録画面に戻る</button>
         </div>
     </div>
