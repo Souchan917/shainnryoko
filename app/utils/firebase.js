@@ -17,6 +17,7 @@ const db = firebase.firestore();
 
 // タイムスタンプの設定
 db.settings({
+    
   timestampsInSnapshots: true
 });
 
