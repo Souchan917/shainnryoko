@@ -232,19 +232,28 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 解答状況を更新する関数
     function updateAnswersList() {
-      answersCollection.orderBy('answeredAt', 'asc').get()
+      // 解答を取得し、回答時間でソート
+      answersCollection.orderBy('answeredAt', 'desc').get()
         .then(snapshot => {
           // リストをクリア
           playerAnswersList.innerHTML = '';
           
           if (!snapshot.empty) {
+            // プレイヤーごとの最新の正解情報を管理
+            const correctPlayers = new Set();
+            
             // 解答一覧を表示
             snapshot.forEach(doc => {
               const answer = doc.data();
+              
+              // プレイヤーが既に正解済みで、この解答が不正解の場合はスキップできる（表示オプション）
+              // ここでは全ての解答を表示する
+              
               const listItem = document.createElement('li');
               
               if (answer.isCorrect) {
                 listItem.classList.add('correct');
+                correctPlayers.add(answer.playerId); // 正解したプレイヤーを記録
               } else {
                 listItem.classList.add('incorrect');
               }
@@ -259,7 +268,15 @@ document.addEventListener('DOMContentLoaded', function() {
               answerTimeSpan.classList.add('answer-time');
               
               if (answer.answerTime !== undefined) {
-                answerTimeSpan.textContent = `${answer.answerTime.toFixed(2)}秒`;
+                // タイムスタンプをフォーマット
+                const date = answer.answeredAt ? new Date(answer.answeredAt.toDate()) : new Date();
+                const timeString = date.toLocaleTimeString('ja-JP', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  second: '2-digit'
+                });
+                
+                answerTimeSpan.textContent = `${timeString} (${answer.answerTime.toFixed(2)}秒)`;
               } else {
                 answerTimeSpan.textContent = '記録なし';
               }
@@ -268,6 +285,16 @@ document.addEventListener('DOMContentLoaded', function() {
               listItem.appendChild(answerTimeSpan);
               playerAnswersList.appendChild(listItem);
             });
+            
+            // 正解者がいない場合のメッセージ（オプション）
+            if (correctPlayers.size === 0) {
+              const correctInfoItem = document.createElement('li');
+              correctInfoItem.style.background = '#f8f9fa';
+              correctInfoItem.style.fontStyle = 'italic';
+              correctInfoItem.style.padding = '8px 15px';
+              correctInfoItem.textContent = 'まだ正解者はいません';
+              playerAnswersList.prepend(correctInfoItem);
+            }
           } else {
             // 解答がない場合
             const listItem = document.createElement('li');
@@ -327,14 +354,9 @@ document.addEventListener('DOMContentLoaded', function() {
         currentPlayerId: currentPlayer.id
       });
       
-      // ゲームが開始されていない、または既に解答済みの場合は何もしない
+      // ゲームが開始されていない場合は何もしない
       if (!gameStartTime) {
         console.log('ゲーム開始時刻が設定されていないため、解答処理をスキップします');
-        return;
-      }
-      
-      if (currentPlayer.answered) {
-        console.log('既に解答済みのため、解答処理をスキップします');
         return;
       }
       
@@ -357,22 +379,41 @@ document.addEventListener('DOMContentLoaded', function() {
       console.log(`正解判定: ${isCorrect ? '正解' : '不正解'} (${answer} === ${CORRECT_ANSWER.toLowerCase()} は ${isCorrect})`);
       
       // プレイヤー情報を更新
-      currentPlayer.answered = true;
-      currentPlayer.answerCorrect = isCorrect;
+      if (isCorrect) {
+        // 正解の場合のみ、解答済みフラグを立てる
+        currentPlayer.answered = true;
+        currentPlayer.answerCorrect = true;
+        
+        // Firestoreのプレイヤー情報を更新
+        playersCollection.doc(currentPlayer.id).update({
+          answered: true,
+          answerCorrect: true
+        })
+        .then(() => {
+          console.log('プレイヤー情報の更新に成功しました');
+        })
+        .catch(error => {
+          console.error('プレイヤー情報の更新に失敗:', error);
+        });
+      } else {
+        // 不正解の場合は解答済みフラグを立てない（再挑戦可能）
+        // ただし、最新の解答状況はFirestoreに記録する
+        playersCollection.doc(currentPlayer.id).update({
+          lastAnswer: answer,
+          lastAnswerTime: answerTime,
+          lastAnsweredAt: firebase.firestore.FieldValue.serverTimestamp()
+        })
+        .then(() => {
+          console.log('プレイヤーの解答履歴を更新しました');
+        })
+        .catch(error => {
+          console.error('プレイヤーの解答履歴の更新に失敗:', error);
+        });
+      }
       
-      // Firestoreのプレイヤー情報を更新
-      playersCollection.doc(currentPlayer.id).update({
-        answered: true,
-        answerCorrect: isCorrect
-      })
-      .then(() => {
-        console.log('プレイヤー情報の更新に成功しました');
-      })
-      .catch(error => {
-        console.error('プレイヤー情報の更新に失敗:', error);
-      });
-      
-      // 解答情報をFirestoreに保存
+      // 解答情報をFirestoreに保存（履歴として全解答を記録）
+      // 毎回新しいドキュメントIDで保存する
+      const answerDocId = `${currentPlayer.id}_${Date.now()}`;
       const answerData = {
         playerId: currentPlayer.id,
         playerName: currentPlayer.name,
@@ -382,20 +423,30 @@ document.addEventListener('DOMContentLoaded', function() {
         answeredAt: firebase.firestore.FieldValue.serverTimestamp()
       };
       
-      answersCollection.doc(currentPlayer.id).set(answerData)
+      answersCollection.doc(answerDocId).set(answerData)
         .then(() => {
           console.log('解答を記録しました', answerData);
           
           // 解答結果を表示
-          answerResult.textContent = isCorrect ? '正解です！' : '残念、不正解です';
+          answerResult.textContent = isCorrect ? '正解です！' : '残念、不正解です。もう一度試してください。';
           answerResult.className = isCorrect ? 'correct' : 'incorrect';
           
-          // 解答時間を表示
-          answerTime.textContent = `解答時間: ${answerTime.toFixed(2)}秒`;
+          // 解答時間を表示（正解の場合のみ）
+          if (isCorrect) {
+            answerTime.textContent = `解答時間: ${answerTime.toFixed(2)}秒`;
+          } else {
+            answerTime.textContent = '';
+          }
           
-          // 解答入力を無効化
-          playerAnswer.disabled = true;
-          submitAnswerBtn.disabled = true;
+          // 正解の場合のみ入力欄を無効化
+          playerAnswer.disabled = isCorrect;
+          submitAnswerBtn.disabled = isCorrect;
+          
+          // 不正解の場合は入力欄をクリアして再度入力可能に
+          if (!isCorrect) {
+            playerAnswer.value = '';
+            playerAnswer.focus();
+          }
         })
         .catch(error => {
           console.error('解答の記録に失敗:', error);
@@ -652,19 +703,56 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('解答欄を表示します');
             answerSection.classList.remove('hidden');
             
-            // プレイヤーが既に解答済みの場合
-            if (currentPlayer.answered) {
-              console.log('プレイヤーは既に解答済みです。入力欄を無効化します');
+            // プレイヤーが既に正解している場合のみ入力欄を無効化
+            if (currentPlayer.answered && currentPlayer.answerCorrect) {
+              console.log('プレイヤーは既に正解しています。入力欄を無効化します');
               playerAnswer.disabled = true;
               submitAnswerBtn.disabled = true;
+              
+              // 正解メッセージを表示
+              answerResult.textContent = '正解です！';
+              answerResult.className = 'correct';
+              
+              // 最新の解答時間を取得して表示
+              playersCollection.doc(currentPlayer.id).get()
+                .then(doc => {
+                  if (doc.exists) {
+                    const playerData = doc.data();
+                    if (playerData.lastAnswerTime) {
+                      answerTime.textContent = `解答時間: ${playerData.lastAnswerTime.toFixed(2)}秒`;
+                    }
+                  }
+                })
+                .catch(console.error);
             } else {
-              console.log('プレイヤーはまだ解答していません。入力欄を有効化します');
+              console.log('プレイヤーはまだ正解していません。入力欄を有効化します');
               playerAnswer.disabled = false;
               submitAnswerBtn.disabled = false;
               
-              // 解答結果表示をクリア
-              answerResult.textContent = '';
-              answerResult.className = '';
+              // 以前の解答結果が残っていれば表示（再接続時など）
+              if (currentPlayer.id) {
+                playersCollection.doc(currentPlayer.id).get()
+                  .then(doc => {
+                    if (doc.exists) {
+                      const playerData = doc.data();
+                      // 直前の解答がある場合
+                      if (playerData.lastAnswer && !playerData.answerCorrect) {
+                        answerResult.textContent = '残念、不正解です。もう一度試してください。';
+                        answerResult.className = 'incorrect';
+                      } else {
+                        // 解答結果表示をクリア
+                        answerResult.textContent = '';
+                        answerResult.className = '';
+                      }
+                    }
+                  })
+                  .catch(console.error);
+              } else {
+                // 解答結果表示をクリア
+                answerResult.textContent = '';
+                answerResult.className = '';
+              }
+              
               answerTime.textContent = '';
             }
           } else {
@@ -736,13 +824,17 @@ document.addEventListener('DOMContentLoaded', function() {
           
           // 現在のプレイヤーの解答状態をリセット（プレイヤーの場合）
           if (currentPlayer.id) {
+            // ローカルの状態をリセット
             currentPlayer.answered = false;
             currentPlayer.answerCorrect = false;
             
             // Firestoreのプレイヤー情報も更新
             playersCollection.doc(currentPlayer.id).update({
               answered: false,
-              answerCorrect: false
+              answerCorrect: false,
+              lastAnswer: null,
+              lastAnswerTime: null,
+              lastAnsweredAt: null
             }).catch(console.error);
           }
           
