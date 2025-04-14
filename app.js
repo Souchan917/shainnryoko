@@ -40,29 +40,153 @@ try {
     }
   });
   
-  // ゲーム状態の参照を変更 - パス構造を単純化
+  // データベース参照
   const gameStateRef = database.ref('/game');
+  const playersRef = database.ref('/players');
 
   // DOM要素
-  const masterBtn = document.getElementById('master-btn');
-  const playerBtn = document.getElementById('player-btn');
-  const masterPanel = document.getElementById('master-panel');
+  const playerRegistration = document.getElementById('player-registration');
   const playerPanel = document.getElementById('player-panel');
+  const masterPanel = document.getElementById('master-panel');
+  const playerNameInput = document.getElementById('player-name');
+  const registerPlayerBtn = document.getElementById('register-player-btn');
+  const goToMasterBtn = document.getElementById('go-to-master-btn');
+  const displayPlayerName = document.getElementById('display-player-name');
   const startGameBtn = document.getElementById('start-game');
   const resetGameBtn = document.getElementById('reset-game');
   const imageContainer = document.getElementById('image-container');
   const statusMessage = document.getElementById('status-message');
+  const connectedPlayersList = document.getElementById('connected-players');
+  const backToRegistrationBtns = document.querySelectorAll('#back-to-registration');
 
-  // 役割選択
-  masterBtn.addEventListener('click', () => {
-      document.querySelector('.role-selector').classList.add('hidden');
-      masterPanel.classList.remove('hidden');
+  // 現在のプレイヤー情報
+  let currentPlayer = {
+    id: null,
+    name: '',
+    isActive: false,
+    joinedAt: null
+  };
+
+  // 画面切り替え関数
+  function showScreen(screenId) {
+    // すべての画面を非表示
+    playerRegistration.classList.remove('active-screen');
+    playerRegistration.classList.add('hidden-screen');
+    playerPanel.classList.remove('active-screen');
+    playerPanel.classList.add('hidden-screen');
+    masterPanel.classList.remove('active-screen');
+    masterPanel.classList.add('hidden-screen');
+    
+    // 指定された画面を表示
+    const targetScreen = document.getElementById(screenId);
+    targetScreen.classList.remove('hidden-screen');
+    targetScreen.classList.add('active-screen');
+  }
+
+  // プレイヤー登録処理
+  registerPlayerBtn.addEventListener('click', () => {
+    const playerName = playerNameInput.value.trim();
+    
+    if (!playerName) {
+      alert('プレイヤー名を入力してください');
+      return;
+    }
+    
+    // プレイヤーIDを生成（ユニークIDまたはタイムスタンプ+ランダム値）
+    const playerId = `player_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    
+    // プレイヤー情報を作成
+    currentPlayer = {
+      id: playerId,
+      name: playerName,
+      isActive: true,
+      joinedAt: firebase.database.ServerValue.TIMESTAMP
+    };
+    
+    // Firebaseにプレイヤー情報を保存
+    playersRef.child(playerId).set(currentPlayer)
+      .then(() => {
+        console.log('プレイヤー登録成功:', playerId);
+        
+        // プレイヤーが接続切れた時に自動的に削除するための設定
+        playersRef.child(playerId).onDisconnect().remove();
+        
+        // プレイヤー名を表示
+        displayPlayerName.textContent = playerName;
+        
+        // プレイヤー画面に遷移
+        showScreen('player-panel');
+        
+        // ローカルストレージにプレイヤー情報を保存
+        localStorage.setItem('currentPlayer', JSON.stringify({
+          id: playerId,
+          name: playerName
+        }));
+      })
+      .catch(error => {
+        console.error('プレイヤー登録エラー:', error);
+        alert('プレイヤー登録に失敗しました。もう一度お試しください。');
+      });
   });
 
-  playerBtn.addEventListener('click', () => {
-      document.querySelector('.role-selector').classList.add('hidden');
-      playerPanel.classList.remove('hidden');
+  // マスター画面への移動
+  goToMasterBtn.addEventListener('click', () => {
+    showScreen('master-panel');
+    updatePlayersList(); // プレイヤーリストを更新
+    
+    // 定期的にプレイヤーリストを更新
+    setInterval(updatePlayersList, 5000);
   });
+
+  // 登録画面に戻る処理
+  backToRegistrationBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      // 現在のプレイヤーをデータベースから削除（プレイヤーの場合）
+      if (currentPlayer.id) {
+        playersRef.child(currentPlayer.id).remove()
+          .then(() => {
+            console.log('プレイヤー情報を削除しました');
+          })
+          .catch(error => {
+            console.error('プレイヤー情報の削除に失敗:', error);
+          });
+      }
+      
+      // 登録画面に戻る
+      showScreen('player-registration');
+    });
+  });
+
+  // プレイヤーリストを更新する関数
+  function updatePlayersList() {
+    playersRef.once('value')
+      .then(snapshot => {
+        const players = snapshot.val();
+        
+        // リストをクリア
+        connectedPlayersList.innerHTML = '';
+        
+        if (players) {
+          // プレイヤー一覧を表示
+          Object.keys(players).forEach(playerId => {
+            const player = players[playerId];
+            const listItem = document.createElement('li');
+            listItem.textContent = player.name;
+            connectedPlayersList.appendChild(listItem);
+          });
+        } else {
+          // プレイヤーがいない場合
+          const listItem = document.createElement('li');
+          listItem.textContent = '接続中のプレイヤーはいません';
+          listItem.style.fontStyle = 'italic';
+          listItem.style.color = '#666';
+          connectedPlayersList.appendChild(listItem);
+        }
+      })
+      .catch(error => {
+        console.error('プレイヤーリスト取得エラー:', error);
+      });
+  }
 
   // ローカルイベント用のリスナー（同じデバイス内での通信用）
   window.addEventListener('storage', function(e) {
@@ -273,6 +397,19 @@ try {
         contentP.classList.remove('game-started');
         imageContainer.innerHTML = '';
         console.log("Waiting for game to start");
+    }
+  }
+
+  // 前回のプレイヤー情報があれば復元
+  const savedPlayer = localStorage.getItem('currentPlayer');
+  if (savedPlayer) {
+    try {
+      const playerData = JSON.parse(savedPlayer);
+      if (playerData.name) {
+        playerNameInput.value = playerData.name;
+      }
+    } catch (e) {
+      console.error('保存されたプレイヤー情報の解析に失敗:', e);
     }
   }
 

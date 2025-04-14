@@ -11,27 +11,50 @@
 </head>
 <body>
     <div class="container">
-        <div class="role-selector">
-            <h1>役割を選択してください</h1>
-            <button id="master-btn">マスター</button>
-            <button id="player-btn">プレイヤー</button>
+        <!-- プレイヤー登録画面 (初期画面) -->
+        <div id="player-registration" class="active-screen">
+            <h1>プレイヤー登録</h1>
+            <div class="form-group">
+                <label for="player-name">プレイヤー名:</label>
+                <input type="text" id="player-name" placeholder="ニックネームを入力してください" required>
+            </div>
+            <button id="register-player-btn">登録してゲームを開始</button>
+            <div class="master-section">
+                <p>マスターの方はこちら</p>
+                <button id="go-to-master-btn">マスター画面へ</button>
+            </div>
         </div>
 
-        <div id="master-panel" class="hidden">
-            <h2>マスター画面</h2>
-            <button id="start-game">ゲームスタート</button>
-            <button id="reset-game">リセット</button>
-            <div id="status-message"></div>
-        </div>
-
-        <div id="player-panel" class="hidden">
+        <!-- プレイヤー画面 -->
+        <div id="player-panel" class="hidden-screen">
             <h2>プレイヤー画面</h2>
+            <div class="player-info">
+                <p>プレイヤー名: <span id="display-player-name"></span></p>
+            </div>
             <div id="game-content">
                 <p>マスターがゲームを開始するのを待っています...</p>
                 <div id="image-container">
                     <!-- 画像がここに表示されます -->
                 </div>
             </div>
+            <button id="back-to-registration" class="small-button">名前変更</button>
+        </div>
+
+        <!-- マスター画面 -->
+        <div id="master-panel" class="hidden-screen">
+            <h2>マスター画面</h2>
+            <div class="master-controls">
+                <button id="start-game">ゲームスタート</button>
+                <button id="reset-game">リセット</button>
+                <div id="status-message"></div>
+            </div>
+            <div class="players-list">
+                <h3>参加プレイヤー</h3>
+                <ul id="connected-players">
+                    <!-- プレイヤーリストがここに表示されます -->
+                </ul>
+            </div>
+            <button id="back-to-registration" class="small-button">登録画面に戻る</button>
         </div>
     </div>
 

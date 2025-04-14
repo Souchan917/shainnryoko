@@ -17,7 +17,7 @@ body {
     padding: 20px;
 }
 
-h1, h2 {
+h1, h2, h3 {
     text-align: center;
     margin-bottom: 20px;
 }
@@ -38,12 +38,82 @@ button:hover {
     background-color: #45a049;
 }
 
-.role-selector {
-    text-align: center;
-    margin: 40px 0;
+.small-button {
+    font-size: 14px;
+    padding: 6px 12px;
+    margin-top: 20px;
+    background-color: #607d8b;
 }
 
-#master-panel, #player-panel {
+.small-button:hover {
+    background-color: #455a64;
+}
+
+/* 画面の表示・非表示 */
+.active-screen {
+    display: block;
+}
+
+.hidden-screen {
+    display: none;
+}
+
+/* プレイヤー登録画面 */
+#player-registration {
+    text-align: center;
+    margin: 40px 0;
+    padding: 20px;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.form-group {
+    margin: 20px 0;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+}
+
+.form-group input {
+    width: 100%;
+    max-width: 300px;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 16px;
+}
+
+#register-player-btn {
+    margin-top: 20px;
+    background-color: #2196F3;
+    font-size: 18px;
+    padding: 12px 24px;
+}
+
+#register-player-btn:hover {
+    background-color: #0b7dda;
+}
+
+.master-section {
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid #eee;
+}
+
+#go-to-master-btn {
+    background-color: #ff9800;
+}
+
+#go-to-master-btn:hover {
+    background-color: #e68a00;
+}
+
+/* プレイヤー画面 */
+#player-panel {
     background: white;
     border-radius: 8px;
     padding: 20px;
@@ -52,10 +122,50 @@ button:hover {
     text-align: center;
 }
 
-.hidden {
-    display: none;
+.player-info {
+    background-color: #e8f5e9;
+    padding: 10px;
+    border-radius: 4px;
+    margin-bottom: 20px;
+    font-weight: bold;
 }
 
+/* マスター画面 */
+#master-panel {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    margin-top: 20px;
+    text-align: center;
+}
+
+.master-controls {
+    margin-bottom: 30px;
+}
+
+.players-list {
+    background-color: #f5f5f5;
+    padding: 15px;
+    border-radius: 4px;
+    margin: 20px 0;
+    text-align: left;
+}
+
+#connected-players {
+    list-style-type: none;
+    padding: 0;
+}
+
+#connected-players li {
+    background-color: white;
+    padding: 8px 15px;
+    margin: 5px 0;
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+/* ゲームコンテンツ */
 #game-content {
     margin-top: 20px;
 }
