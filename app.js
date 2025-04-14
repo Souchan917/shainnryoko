@@ -2,20 +2,34 @@
 const firebaseConfig = {
   apiKey: "AIzaSyCpAdi55yaEr78W3Hc-_j9FN_snS7z5mRI",
   authDomain: "syainn-8ae20.firebaseapp.com",
+  databaseURL: "https://syainn-8ae20-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "syainn-8ae20",
   storageBucket: "syainn-8ae20.appspot.com",
   messagingSenderId: "797239462271",
   appId: "1:797239462271:web:279ffed9c84ca01772724a",
-  measurementId: "G-PKJ4GG8ZQQ",
-  databaseURL: "https://syainn-8ae20-default-rtdb.firebaseio.com"
+  measurementId: "G-PKJ4GG8ZQQ"
 };
 
 // Firebaseの初期化とエラーハンドリング
 try {
-  firebase.initializeApp(firebaseConfig);
+  // Firebaseアプリの初期化
+  if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+  }
   console.log("Firebase initialized successfully");
   
+  // Realtime Databaseへの参照を取得
   const database = firebase.database();
+  
+  // データベース接続のテスト
+  database.ref('.info/connected').on('value', (snap) => {
+    if (snap.val() === true) {
+      console.log('データベースに接続しました');
+    } else {
+      console.log('データベースから切断されました');
+    }
+  });
+  
   const gameStateRef = database.ref('gameState');
 
   // DOM要素
@@ -44,14 +58,21 @@ try {
       console.log("Starting game...");
       statusMessage.textContent = "ゲーム開始中...";
       
-      // 画像パスを絶対パスに変更
-      const imagePath = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1) + 'puzzle.png';
+      // 画像パスを設定
+      const imagePath = 'puzzle.png';
       console.log("Image path:", imagePath);
+      
+      // ローカルストレージにも状態を保存（フォールバック用）
+      localStorage.setItem('gameState', JSON.stringify({
+        gameStarted: true,
+        imagePath: imagePath,
+        timestamp: Date.now()
+      }));
       
       // ゲーム状態を更新
       gameStateRef.set({
           gameStarted: true,
-          imagePath: imagePath, // 絶対パスを使用
+          imagePath: imagePath,
           timestamp: firebase.database.ServerValue.TIMESTAMP
       })
       .then(() => {
@@ -60,13 +81,22 @@ try {
       })
       .catch(error => {
           console.error("Error updating game state:", error);
-          statusMessage.textContent = "エラーが発生しました: " + error.message;
+          statusMessage.textContent = "Firebase更新エラー (ローカルモードで動作中): " + error.message;
       });
   });
 
   // マスター側：リセット
   resetGameBtn.addEventListener('click', () => {
       console.log("Resetting game...");
+      statusMessage.textContent = "リセット中...";
+      
+      // ローカルストレージの状態もリセット
+      localStorage.setItem('gameState', JSON.stringify({
+        gameStarted: false,
+        imagePath: '',
+        timestamp: Date.now()
+      }));
+      
       // ゲーム状態をリセット
       gameStateRef.set({
           gameStarted: false,
@@ -75,35 +105,54 @@ try {
       })
       .then(() => {
           console.log("Game state reset successfully");
+          statusMessage.textContent = "リセットされました";
       })
       .catch(error => {
           console.error("Error resetting game state:", error);
+          statusMessage.textContent = "Firebaseリセットエラー (ローカルモードで動作中): " + error.message;
       });
   });
 
   // プレイヤー側：ゲーム状態の監視
+  let fbConnectionError = false;
+  
   gameStateRef.on('value', (snapshot) => {
       console.log("Game state changed:", snapshot.val());
+      fbConnectionError = false;
       const gameState = snapshot.val();
-      
-      if (gameState && gameState.gameStarted) {
-          // ゲームが開始されたら画像を表示
-          const contentP = document.querySelector('#game-content p');
-          contentP.textContent = 'ゲームが開始されました！';
-          contentP.classList.add('game-started');
-          
-          // 画像を表示
-          console.log("Showing image:", gameState.imagePath);
-          imageContainer.innerHTML = `<img src="${gameState.imagePath}" alt="ゲーム画像" onerror="this.onerror=null; this.src='puzzle.png'; console.log('Fallback to local path');">`;
-      } else {
-          // ゲームがリセットされたら待機状態に戻す
-          document.querySelector('#game-content p').textContent = 'マスターがゲームを開始するのを待っています...';
-          imageContainer.innerHTML = '';
-          console.log("Waiting for game to start");
-      }
+      updateGameDisplay(gameState);
   }, (error) => {
       console.error("Error getting game state:", error);
+      fbConnectionError = true;
+      
+      // Firebaseからの取得に失敗した場合、ローカルストレージを使用
+      const localGameState = JSON.parse(localStorage.getItem('gameState'));
+      if (localGameState) {
+        console.log("Using local game state:", localGameState);
+        updateGameDisplay(localGameState);
+      }
   });
+  
+  // ゲーム表示の更新関数
+  function updateGameDisplay(gameState) {
+    if (gameState && gameState.gameStarted) {
+        // ゲームが開始されたら画像を表示
+        const contentP = document.querySelector('#game-content p');
+        contentP.textContent = 'ゲームが開始されました！';
+        contentP.classList.add('game-started');
+        
+        // 画像を表示
+        console.log("Showing image:", gameState.imagePath);
+        imageContainer.innerHTML = `<img src="${gameState.imagePath}" alt="ゲーム画像" onerror="this.onerror=null; this.src='puzzle.png';">`;
+    } else {
+        // ゲームがリセットされたら待機状態に戻す
+        const contentP = document.querySelector('#game-content p');
+        contentP.textContent = 'マスターがゲームを開始するのを待っています...';
+        contentP.classList.remove('game-started');
+        imageContainer.innerHTML = '';
+        console.log("Waiting for game to start");
+    }
+  }
 
   // 初期化時にFirebaseのゲーム状態を確認
   gameStateRef.once('value')
@@ -113,11 +162,20 @@ try {
       
       // データがなければ初期値を設定
       if (!gameState) {
-          return gameStateRef.set({
+          const initialState = {
               gameStarted: false,
               imagePath: '',
               timestamp: firebase.database.ServerValue.TIMESTAMP
-          });
+          };
+          
+          // ローカルストレージにも保存
+          localStorage.setItem('gameState', JSON.stringify({
+            gameStarted: false,
+            imagePath: '',
+            timestamp: Date.now()
+          }));
+          
+          return gameStateRef.set(initialState);
       }
   })
   .then(() => {
@@ -125,7 +183,37 @@ try {
   })
   .catch(error => {
       console.error("Error setting initial game state:", error);
+      
+      // Firebaseの初期化に失敗した場合、ローカルストレージのデータを使用
+      const localGameState = JSON.parse(localStorage.getItem('gameState'));
+      if (localGameState) {
+        console.log("Using local game state:", localGameState);
+        updateGameDisplay(localGameState);
+      } else {
+        // ローカルストレージにもデータがない場合は初期状態を設定
+        localStorage.setItem('gameState', JSON.stringify({
+          gameStarted: false,
+          imagePath: '',
+          timestamp: Date.now()
+        }));
+      }
   });
+  
+  // 定期的にFirebase接続を確認（5秒ごと）
+  setInterval(() => {
+    if (fbConnectionError) {
+      // 再接続を試みる
+      gameStateRef.once('value')
+        .then(snapshot => {
+          console.log("Reconnected to Firebase");
+          fbConnectionError = false;
+          updateGameDisplay(snapshot.val());
+        })
+        .catch(error => {
+          console.log("Still disconnected from Firebase:", error.message);
+        });
+    }
+  }, 5000);
   
 } catch (error) {
   console.error("Firebase initialization error:", error);
