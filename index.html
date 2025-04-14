@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>賭け謎解きイベント</title>
+  <link rel="stylesheet" href="app/styles/main.css">
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-analytics-compat.js"></script>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>賭け謎解きイベント</h1>
+      <div id="user-info"></div>
+    </header>
+
+    <main>
+      <!-- プレイヤー名入力フォーム -->
+      <div id="player-name-container">
+        <h2>ゲームに参加する</h2>
+        <form id="player-name-form">
+          <div class="form-group">
+            <label for="player-name-input">あなたの名前</label>
+            <input type="text" id="player-name-input" required placeholder="名前を入力してください">
+          </div>
+          <button type="submit">参加する</button>
+        </form>
+      </div>
+
+      <!-- ゲーム画面 -->
+      <div id="dashboard" style="display: none;">
+        <div class="dashboard-section">
+          <h2>プレイヤー情報</h2>
+          <div id="player-info">
+            <p>名前: <span id="player-name-display"></span></p>
+            <p>総合得点: <span id="total-points">0</span>ポイント</p>
+          </div>
+        </div>
+
+        <div class="dashboard-section">
+          <h2>賭け投票</h2>
+          <div id="betting-container">
+            <h3>予想対象：謎解き本番で1位になる人物</h3>
+            <form id="betting-form">
+              <div class="form-group">
+                <label for="betting-target">予想する人</label>
+                <select id="betting-target">
+                  <!-- JavaScriptで動的に読み込み -->
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="betting-points">賭けるポイント</label>
+                <input type="number" id="betting-points" min="1" value="1">
+              </div>
+              <button type="submit">賭ける</button>
+            </form>
+            <div id="current-bets">
+              <h3>現在の賭け状況</h3>
+              <ul id="bets-list"></ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="dashboard-section">
+          <h2>謎解きゲーム</h2>
+          <div id="puzzle-container">
+            <div id="puzzle-status">
+              <p>状態: <span id="game-status">準備中</span></p>
+              <p>残り時間: <span id="timer">30:00</span></p>
+            </div>
+            <div id="puzzle-content">
+              <!-- ゲーム開始時に問題が表示される -->
+              <p>ゲームが始まるのをお待ちください...</p>
+            </div>
+            <div id="puzzle-input" style="display: none;">
+              <form id="answer-form">
+                <div class="form-group">
+                  <label for="answer">解答:</label>
+                  <input type="text" id="answer">
+                </div>
+                <button type="submit">解答する</button>
+              </form>
+            </div>
+            <div id="hints-shop" style="display: none;">
+              <h3>ヒント</h3>
+              <div id="available-hints">
+                <!-- ヒント一覧が動的に表示される -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="dashboard-section">
+          <h2>ランキング</h2>
+          <div id="rankings">
+            <h3>総合ポイントランキング</h3>
+            <ol id="rankings-list"></ol>
+          </div>
+        </div>
+        
+        <div class="player-actions">
+          <button id="logout-button">別の名前で参加する</button>
+        </div>
+      </div>
+    </main>
+
+    <footer>
+      <p>&copy; 2024 賭け謎解きイベント</p>
+    </footer>
+  </div>
+
+  <!-- JavaScript -->
+  <script src="app/utils/firebase.js"></script>
+  <script src="app/utils/player.js"></script>
+  <script src="app/components/dashboard.js"></script>
+  <script src="app/components/betting.js"></script>
+  <script src="app/components/puzzle.js"></script>
+  <script src="app/components/rankings.js"></script>
+  <script src="app/main.js"></script>
+</body>
+</html> 
