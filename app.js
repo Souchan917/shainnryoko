@@ -3,11 +3,11 @@ const firebaseConfig = {
   apiKey: "AIzaSyCpAdi55yaEr78W3Hc-_j9FN_snS7z5mRI",
   authDomain: "syainn-8ae20.firebaseapp.com",
   projectId: "syainn-8ae20",
-  storageBucket: "syainn-8ae20.firebasestorage.app",
+  storageBucket: "syainn-8ae20.appspot.com",
   messagingSenderId: "797239462271",
   appId: "1:797239462271:web:279ffed9c84ca01772724a",
   measurementId: "G-PKJ4GG8ZQQ",
-  databaseURL: "https://syainn-8ae20-default-rtdb.asia-southeast1.firebasedatabase.app"
+  databaseURL: "https://syainn-8ae20-default-rtdb.firebaseio.com"
 };
 
 // Firebase初期化
