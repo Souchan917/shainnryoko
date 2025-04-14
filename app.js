@@ -2,7 +2,6 @@
 const firebaseConfig = {
   apiKey: "AIzaSyCpAdi55yaEr78W3Hc-_j9FN_snS7z5mRI",
   authDomain: "syainn-8ae20.firebaseapp.com",
-  databaseURL: "https://syainn-8ae20-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "syainn-8ae20",
   storageBucket: "syainn-8ae20.appspot.com",
   messagingSenderId: "797239462271",
@@ -18,31 +17,25 @@ try {
   }
   console.log("Firebase initialized successfully");
   
-  // Realtime Databaseへの参照を取得
-  const database = firebase.database();
-  console.log("データベースURL:", firebaseConfig.databaseURL);
+  // Firestoreへの参照を取得
+  const db = firebase.firestore();
+  console.log("Firestore接続を開始しました");
   
-  // データベース接続のテスト - 直接書き込みテスト
-  database.ref('.info/connected').on('value', (snap) => {
-    if (snap.val() === true) {
-      console.log('データベースに接続しました');
-      // 接続テスト - テストデータ書き込み
-      database.ref('connectionTest').set({
-        timestamp: Date.now(),
-        status: 'connected'
-      }).then(() => {
-        console.log('接続テストデータ書き込み成功');
-      }).catch(err => {
-        console.error('接続テストデータ書き込み失敗:', err);
-      });
-    } else {
-      console.log('データベースから切断されました');
-    }
+  // コレクション参照
+  const gameStateCollection = db.collection('gameState');
+  const playersCollection = db.collection('players');
+  
+  // 接続テスト - テストデータ書き込み
+  db.collection('connectionTest').doc('status').set({
+    timestamp: Date.now(),
+    status: 'connected'
+  })
+  .then(() => {
+    console.log('接続テストデータ書き込み成功');
+  })
+  .catch(err => {
+    console.error('接続テストデータ書き込み失敗:', err);
   });
-  
-  // データベース参照
-  const gameStateRef = database.ref('/game');
-  const playersRef = database.ref('/players');
 
   // DOM要素
   const playerRegistration = document.getElementById('player-registration');
@@ -100,16 +93,13 @@ try {
       id: playerId,
       name: playerName,
       isActive: true,
-      joinedAt: firebase.database.ServerValue.TIMESTAMP
+      joinedAt: firebase.firestore.FieldValue.serverTimestamp()
     };
     
-    // Firebaseにプレイヤー情報を保存
-    playersRef.child(playerId).set(currentPlayer)
+    // Firestoreにプレイヤー情報を保存
+    playersCollection.doc(playerId).set(currentPlayer)
       .then(() => {
         console.log('プレイヤー登録成功:', playerId);
-        
-        // プレイヤーが接続切れた時に自動的に削除するための設定
-        playersRef.child(playerId).onDisconnect().remove();
         
         // プレイヤー名を表示
         displayPlayerName.textContent = playerName;
@@ -143,7 +133,7 @@ try {
     btn.addEventListener('click', () => {
       // 現在のプレイヤーをデータベースから削除（プレイヤーの場合）
       if (currentPlayer.id) {
-        playersRef.child(currentPlayer.id).remove()
+        playersCollection.doc(currentPlayer.id).delete()
           .then(() => {
             console.log('プレイヤー情報を削除しました');
           })
@@ -159,17 +149,15 @@ try {
 
   // プレイヤーリストを更新する関数
   function updatePlayersList() {
-    playersRef.once('value')
+    playersCollection.get()
       .then(snapshot => {
-        const players = snapshot.val();
-        
         // リストをクリア
         connectedPlayersList.innerHTML = '';
         
-        if (players) {
+        if (!snapshot.empty) {
           // プレイヤー一覧を表示
-          Object.keys(players).forEach(playerId => {
-            const player = players[playerId];
+          snapshot.forEach(doc => {
+            const player = doc.data();
             const listItem = document.createElement('li');
             listItem.textContent = player.name;
             connectedPlayersList.appendChild(listItem);
@@ -195,7 +183,7 @@ try {
       if (e.newValue) {
         try {
           const localGameState = JSON.parse(e.newValue);
-          // Firebaseが接続されていない場合にのみローカルストレージの変更を反映
+          // Firestoreが接続されていない場合にのみローカルストレージの変更を反映
           if (fbConnectionError) {
             updateGameDisplay(localGameState);
           }
@@ -220,43 +208,43 @@ try {
       const gameState = {
         gameStarted: true,
         imagePath: imagePath,
-        timestamp: Date.now()
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
       };
       
       // ローカルストレージにも状態を保存（フォールバック用）
-      localStorage.setItem('gameState', JSON.stringify(gameState));
+      localStorage.setItem('gameState', JSON.stringify({
+        gameStarted: true,
+        imagePath: imagePath,
+        timestamp: Date.now()
+      }));
       
-      // まず単純なテストデータを書き込んでみる
-      database.ref('/test').set({test: 'data'})
-      .then(() => {
-        console.log('テストデータ書き込み成功');
-        
-        // ゲーム状態を更新
-        return gameStateRef.set({
-          gameStarted: true,
-          imagePath: imagePath,
-          timestamp: firebase.database.ServerValue.TIMESTAMP
-        });
-      })
+      // ゲーム状態を更新（gameStateドキュメントに保存）
+      gameStateCollection.doc('current').set(gameState)
       .then(() => {
           console.log("Game state updated successfully");
           statusMessage.textContent = "ゲームが開始されました！";
           
           // データベースから最新の状態を読み込んで確認
-          return gameStateRef.once('value');
+          return gameStateCollection.doc('current').get();
       })
-      .then((snapshot) => {
-          console.log("確認: 書き込まれたデータ:", snapshot.val());
+      .then((doc) => {
+          if (doc.exists) {
+            console.log("確認: 書き込まれたデータ:", doc.data());
+          }
           
           // ローカル表示も更新
           updateGameDisplay(gameState);
       })
       .catch(error => {
           console.error("Error updating game state:", error);
-          statusMessage.textContent = "Firebase更新エラー (ローカルモードで動作中): " + error.message;
+          statusMessage.textContent = "Firestore更新エラー (ローカルモードで動作中): " + error.message;
           
-          // Firebase更新に失敗した場合でもローカル表示を更新
-          updateGameDisplay(gameState);
+          // Firestore更新に失敗した場合でもローカル表示を更新
+          updateGameDisplay({
+            gameStarted: true,
+            imagePath: imagePath,
+            timestamp: Date.now()
+          });
       });
   });
 
@@ -269,79 +257,103 @@ try {
       const gameState = {
         gameStarted: false,
         imagePath: '',
-        timestamp: Date.now()
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
       };
       
       // ローカルストレージの状態もリセット
-      localStorage.setItem('gameState', JSON.stringify(gameState));
+      localStorage.setItem('gameState', JSON.stringify({
+        gameStarted: false,
+        imagePath: '',
+        timestamp: Date.now()
+      }));
       
       // ゲーム状態をリセット
-      gameStateRef.set({
-          gameStarted: false,
-          imagePath: '',
-          timestamp: firebase.database.ServerValue.TIMESTAMP
-      })
+      gameStateCollection.doc('current').set(gameState)
       .then(() => {
           console.log("Game state reset successfully");
           statusMessage.textContent = "リセットされました";
           
           // データベースから最新の状態を読み込んで確認
-          return gameStateRef.once('value');
+          return gameStateCollection.doc('current').get();
       })
-      .then((snapshot) => {
-          console.log("確認: リセット後のデータ:", snapshot.val());
+      .then((doc) => {
+          if (doc.exists) {
+            console.log("確認: リセット後のデータ:", doc.data());
+          }
           
           // ローカル表示も更新
-          updateGameDisplay(gameState);
+          updateGameDisplay({
+            gameStarted: false,
+            imagePath: '',
+            timestamp: Date.now()
+          });
       })
       .catch(error => {
           console.error("Error resetting game state:", error);
-          statusMessage.textContent = "Firebaseリセットエラー (ローカルモードで動作中): " + error.message;
+          statusMessage.textContent = "Firestore リセットエラー (ローカルモードで動作中): " + error.message;
           
-          // Firebase更新に失敗した場合でもローカル表示を更新
-          updateGameDisplay(gameState);
+          // Firestore更新に失敗した場合でもローカル表示を更新
+          updateGameDisplay({
+            gameStarted: false,
+            imagePath: '',
+            timestamp: Date.now()
+          });
       });
   });
 
   // プレイヤー側：ゲーム状態の監視
   let fbConnectionError = false;
+  let unsubscribeGameState = null;
   
-  // 最初にデータベース接続確認
-  database.ref('/test').set({timestamp: Date.now()})
-  .then(() => {
-    console.log("データベース書き込みテスト成功");
+  // ゲーム状態の監視を開始する関数
+  function startGameStateListener() {
+    // 古いリスナーがあれば解除
+    if (unsubscribeGameState) {
+      unsubscribeGameState();
+    }
     
-    // ゲーム状態の監視を開始
-    gameStateRef.on('value', (snapshot) => {
-      console.log("Game state changed:", snapshot.val());
-      fbConnectionError = false;
-      const gameState = snapshot.val();
-      if (gameState) {
-        updateGameDisplay(gameState);
-      } else {
-        console.log("データベースにゲーム状態がありません");
-        // 初期状態を設定
-        const initialState = {
-          gameStarted: false,
-          imagePath: '',
-          timestamp: Date.now()
-        };
-        updateGameDisplay(initialState);
-      }
-    }, (error) => {
-      console.error("Error getting game state:", error);
-      fbConnectionError = true;
-      
-      // Firebaseからの取得に失敗した場合、ローカルストレージを使用
-      const localGameState = JSON.parse(localStorage.getItem('gameState'));
-      if (localGameState) {
-        console.log("Using local game state:", localGameState);
-        updateGameDisplay(localGameState);
-      }
-    });
+    // リアルタイムリスナーを設定
+    unsubscribeGameState = gameStateCollection.doc('current')
+      .onSnapshot((doc) => {
+        console.log("Game state changed:", doc.exists ? doc.data() : null);
+        fbConnectionError = false;
+        
+        if (doc.exists) {
+          const gameState = doc.data();
+          updateGameDisplay(gameState);
+        } else {
+          console.log("データベースにゲーム状態がありません");
+          // 初期状態を設定
+          const initialState = {
+            gameStarted: false,
+            imagePath: '',
+            timestamp: Date.now()
+          };
+          updateGameDisplay(initialState);
+        }
+      }, (error) => {
+        console.error("Error getting game state:", error);
+        fbConnectionError = true;
+        
+        // Firestoreからの取得に失敗した場合、ローカルストレージを使用
+        const localGameState = JSON.parse(localStorage.getItem('gameState'));
+        if (localGameState) {
+          console.log("Using local game state:", localGameState);
+          updateGameDisplay(localGameState);
+        }
+      });
+  }
+  
+  // 接続テストと監視開始
+  db.collection('connectionTest').doc('test').set({
+    timestamp: Date.now()
+  })
+  .then(() => {
+    console.log("Firestore書き込みテスト成功");
+    startGameStateListener();
   })
   .catch(err => {
-    console.error("データベース書き込みテスト失敗:", err);
+    console.error("Firestore書き込みテスト失敗:", err);
     fbConnectionError = true;
     
     // ローカルストレージのデータを使用
@@ -413,27 +425,38 @@ try {
     }
   }
 
-  // 定期的にFirebase接続を確認（5秒ごと）
+  // 定期的にFirestore接続を確認（5秒ごと）
   setInterval(() => {
     if (fbConnectionError) {
       // 再接続を試みる
-      database.ref('/test').set({timestamp: Date.now()})
+      db.collection('connectionTest').doc('test').set({
+        timestamp: Date.now()
+      })
       .then(() => {
-        console.log("Firebase接続テスト成功 - 再接続完了");
+        console.log("Firestore接続テスト成功 - 再接続完了");
         fbConnectionError = false;
         
-        // ゲーム状態を再取得
-        return gameStateRef.once('value');
-      })
-      .then(snapshot => {
-        console.log("Reconnected to Firebase");
-        updateGameDisplay(snapshot.val());
+        // ゲーム状態の監視を再開
+        startGameStateListener();
       })
       .catch(error => {
-        console.log("Still disconnected from Firebase:", error.message);
+        console.log("Still disconnected from Firestore:", error.message);
       });
     }
   }, 5000);
+  
+  // 非アクティブになる前に切断処理
+  window.addEventListener('beforeunload', () => {
+    // プレイヤー情報を削除（プレイヤーの場合）
+    if (currentPlayer.id) {
+      playersCollection.doc(currentPlayer.id).delete().catch(console.error);
+    }
+    
+    // リスナーを解除
+    if (unsubscribeGameState) {
+      unsubscribeGameState();
+    }
+  });
   
 } catch (error) {
   console.error("Firebase initialization error:", error);
