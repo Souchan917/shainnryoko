@@ -15,6 +15,9 @@
     <header>
       <h1>賭け謎解きイベント</h1>
       <div id="user-info"></div>
+      <div id="master-button-container" class="master-button-container">
+        <button id="master-button" class="master-button">マスター画面</button>
+      </div>
     </header>
 
     <main>
@@ -105,6 +108,93 @@
           <button id="logout-button">別の名前で参加する</button>
         </div>
       </div>
+
+      <!-- マスター画面 -->
+      <div id="master-dashboard" style="display: none;">
+        <div class="dashboard-section">
+          <h2>マスター管理画面</h2>
+          <div class="access-form" id="master-access-form">
+            <div class="form-group">
+              <label for="master-password">マスターパスワード</label>
+              <input type="password" id="master-password" placeholder="パスワードを入力">
+            </div>
+            <button id="master-login-button" type="button">ログイン</button>
+          </div>
+
+          <div id="master-controls" style="display: none;">
+            <div class="master-section">
+              <h3>ゲーム管理</h3>
+              <div class="form-group">
+                <label for="game-status-select">ゲーム状態</label>
+                <select id="game-status-select">
+                  <option value="preparing">準備中</option>
+                  <option value="active">進行中</option>
+                  <option value="paused">一時停止</option>
+                  <option value="finished">終了</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="time-remaining">残り時間 (秒)</label>
+                <input type="number" id="time-remaining" min="0" value="1800">
+              </div>
+              <button id="update-game-status" type="button">ゲーム状態を更新</button>
+            </div>
+
+            <div class="master-section">
+              <h3>謎解き問題管理</h3>
+              <div class="form-group">
+                <label for="puzzle-title">問題タイトル</label>
+                <input type="text" id="puzzle-title" placeholder="タイトルを入力">
+              </div>
+              <div class="form-group">
+                <label for="puzzle-description">問題内容</label>
+                <textarea id="puzzle-description" rows="5" placeholder="問題の説明を入力"></textarea>
+              </div>
+              <div class="form-group">
+                <label for="puzzle-image-url">画像URL (オプション)</label>
+                <input type="text" id="puzzle-image-url" placeholder="画像のURLを入力">
+              </div>
+              <div class="form-group">
+                <label for="puzzle-answer">正解</label>
+                <input type="text" id="puzzle-answer" placeholder="正解を入力">
+              </div>
+              <button id="create-puzzle" type="button">問題を作成/更新</button>
+            </div>
+
+            <div class="master-section">
+              <h3>ヒント管理</h3>
+              <div id="hints-manager">
+                <div class="hint-form">
+                  <div class="form-group">
+                    <label for="hint-title">ヒントタイトル</label>
+                    <input type="text" id="hint-title" placeholder="ヒントのタイトル">
+                  </div>
+                  <div class="form-group">
+                    <label for="hint-content">ヒント内容</label>
+                    <textarea id="hint-content" rows="3" placeholder="ヒントの内容"></textarea>
+                  </div>
+                  <div class="form-group">
+                    <label for="hint-cost">コスト</label>
+                    <input type="number" id="hint-cost" min="1" value="10">
+                  </div>
+                  <button id="add-hint" type="button">ヒントを追加</button>
+                </div>
+                <div id="hints-list" class="hints-list">
+                  <!-- ヒント一覧が表示される -->
+                </div>
+              </div>
+            </div>
+
+            <div class="master-section">
+              <h3>結果管理</h3>
+              <button id="calculate-results" type="button">結果を計算</button>
+              <div id="results-display" class="results-display">
+                <!-- 結果が表示される -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </main>
 
     <footer>
@@ -119,6 +209,7 @@
   <script src="app/components/betting.js"></script>
   <script src="app/components/puzzle.js"></script>
   <script src="app/components/rankings.js"></script>
+  <script src="app/components/master.js"></script>
   <script src="app/main.js"></script>
 </body>
 </html> 
