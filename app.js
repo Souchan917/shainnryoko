@@ -55,6 +55,15 @@ document.addEventListener('DOMContentLoaded', function() {
     const answerTime = document.getElementById('answer-time');
     const playerAnswersList = document.getElementById('player-answers');
   
+    console.log('DOM要素の参照結果:', {
+      answerSection: !!answerSection,
+      playerAnswer: !!playerAnswer,
+      submitAnswerBtn: !!submitAnswerBtn,
+      answerResult: !!answerResult,
+      answerTime: !!answerTime,
+      playerAnswersList: !!playerAnswersList
+    });
+  
     // 現在のプレイヤー情報
     let currentPlayer = {
       id: null,
@@ -293,34 +302,59 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 解答送信処理
     submitAnswerBtn.addEventListener('click', () => {
+      console.log('解答ボタンがクリックされました');
       submitAnswer();
     });
-    
+  
     // Enter キーで解答送信
     playerAnswer.addEventListener('keypress', (e) => {
       if (e.key === 'Enter') {
+        console.log('Enterキーが押されました');
         submitAnswer();
       }
     });
-    
+  
     // 解答送信の共通処理
     function submitAnswer() {
+      console.log('submitAnswer関数が呼び出されました');
+      console.log('現在の状態:', {
+        gameStartTime,
+        currentPlayerAnswered: currentPlayer.answered,
+        answer: playerAnswer.value,
+        answerSectionVisible: !answerSection.classList.contains('hidden'),
+        submitButtonDisabled: submitAnswerBtn.disabled,
+        inputDisabled: playerAnswer.disabled,
+        currentPlayerId: currentPlayer.id
+      });
+      
       // ゲームが開始されていない、または既に解答済みの場合は何もしない
-      if (!gameStartTime || currentPlayer.answered) {
+      if (!gameStartTime) {
+        console.log('ゲーム開始時刻が設定されていないため、解答処理をスキップします');
+        return;
+      }
+      
+      if (currentPlayer.answered) {
+        console.log('既に解答済みのため、解答処理をスキップします');
         return;
       }
       
       const answer = playerAnswer.value.trim().toLowerCase(); // 小文字に変換して比較
       if (!answer) {
+        console.log('解答が空のため、処理をスキップします');
         return;
       }
+      
+      console.log(`解答内容: "${answer}"`);
+      console.log(`正解内容: "${CORRECT_ANSWER.toLowerCase()}"`);
       
       // 解答時間を計算（秒単位）
       const now = Date.now();
       const answerTime = (now - gameStartTime) / 1000;
+      console.log(`解答時間計算: (${now} - ${gameStartTime}) / 1000 = ${answerTime}秒`);
       
       // 正解かどうかをチェック
       const isCorrect = answer === CORRECT_ANSWER.toLowerCase();
+      console.log(`正解判定: ${isCorrect ? '正解' : '不正解'} (${answer} === ${CORRECT_ANSWER.toLowerCase()} は ${isCorrect})`);
       
       // プレイヤー情報を更新
       currentPlayer.answered = true;
@@ -330,6 +364,12 @@ document.addEventListener('DOMContentLoaded', function() {
       playersCollection.doc(currentPlayer.id).update({
         answered: true,
         answerCorrect: isCorrect
+      })
+      .then(() => {
+        console.log('プレイヤー情報の更新に成功しました');
+      })
+      .catch(error => {
+        console.error('プレイヤー情報の更新に失敗:', error);
       });
       
       // 解答情報をFirestoreに保存
@@ -389,7 +429,8 @@ document.addEventListener('DOMContentLoaded', function() {
               gameStarted: true,
               imagePath: imagePath,
               timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-              correctAnswer: CORRECT_ANSWER
+              correctAnswer: CORRECT_ANSWER,
+              startTime: Date.now() // ゲーム開始時刻を追加
             };
             
             // ローカルストレージにも状態を保存（フォールバック用）
@@ -397,7 +438,8 @@ document.addEventListener('DOMContentLoaded', function() {
               gameStarted: true,
               imagePath: imagePath,
               timestamp: Date.now(),
-              correctAnswer: CORRECT_ANSWER
+              correctAnswer: CORRECT_ANSWER,
+              startTime: Date.now() // ゲーム開始時刻を追加
             }));
             
             // ゲーム状態を更新（gameStateドキュメントに保存）
@@ -420,7 +462,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 gameStarted: true,
                 imagePath: imagePath,
                 timestamp: Date.now(),
-                correctAnswer: CORRECT_ANSWER
+                correctAnswer: CORRECT_ANSWER,
+                startTime: Date.now() // ゲーム開始時刻を追加
               });
               
               // 解答リストを更新
@@ -484,7 +527,8 @@ document.addEventListener('DOMContentLoaded', function() {
               gameStarted: false,
               imagePath: '',
               timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-              correctAnswer: CORRECT_ANSWER
+              correctAnswer: CORRECT_ANSWER,
+              startTime: null // 開始時刻をリセット
             };
             
             // ローカルストレージの状態もリセット
@@ -492,7 +536,8 @@ document.addEventListener('DOMContentLoaded', function() {
               gameStarted: false,
               imagePath: '',
               timestamp: Date.now(),
-              correctAnswer: CORRECT_ANSWER
+              correctAnswer: CORRECT_ANSWER,
+              startTime: null // 開始時刻をリセット
             }));
             
             // ゲーム状態をリセット
@@ -515,7 +560,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 gameStarted: false,
                 imagePath: '',
                 timestamp: Date.now(),
-                correctAnswer: CORRECT_ANSWER
+                correctAnswer: CORRECT_ANSWER,
+                startTime: null // 開始時刻をリセット
               });
               
               // 解答リストを更新
@@ -594,6 +640,8 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
       }
       
+      console.log('updateGameDisplay:', gameState);
+      
       if (gameState && gameState.gameStarted) {
           // ゲームが開始されたら画像を表示
           contentP.textContent = 'ゲームが開始されました！';
@@ -601,13 +649,16 @@ document.addEventListener('DOMContentLoaded', function() {
           
           // 解答欄を表示
           if (answerSection) {
+            console.log('解答欄を表示します');
             answerSection.classList.remove('hidden');
             
             // プレイヤーが既に解答済みの場合
             if (currentPlayer.answered) {
+              console.log('プレイヤーは既に解答済みです。入力欄を無効化します');
               playerAnswer.disabled = true;
               submitAnswerBtn.disabled = true;
             } else {
+              console.log('プレイヤーはまだ解答していません。入力欄を有効化します');
               playerAnswer.disabled = false;
               submitAnswerBtn.disabled = false;
               
@@ -616,10 +667,16 @@ document.addEventListener('DOMContentLoaded', function() {
               answerResult.className = '';
               answerTime.textContent = '';
             }
+          } else {
+            console.log('解答欄要素が見つかりません');
           }
           
           // ゲーム開始時刻を記録（解答時間計算用）
-          if (!gameStartTime) {
+          if (gameState.startTime) {
+            console.log(`ゲーム開始時刻をFirestoreから取得: ${gameState.startTime}`);
+            gameStartTime = gameState.startTime;
+          } else if (!gameStartTime) {
+            console.log('ゲーム開始時刻を現在時刻で設定します');
             gameStartTime = Date.now();
           }
           
@@ -661,6 +718,7 @@ document.addEventListener('DOMContentLoaded', function() {
           
           // 解答欄を非表示
           if (answerSection) {
+            console.log('解答欄を非表示にします');
             answerSection.classList.add('hidden');
           }
           
@@ -673,6 +731,7 @@ document.addEventListener('DOMContentLoaded', function() {
           if (answerTime) answerTime.textContent = '';
           
           // ゲーム開始時刻をリセット
+          console.log('ゲーム開始時刻をリセットします');
           gameStartTime = null;
           
           // 現在のプレイヤーの解答状態をリセット（プレイヤーの場合）
