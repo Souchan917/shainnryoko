@@ -53,21 +53,43 @@ try {
       playerPanel.classList.remove('hidden');
   });
 
+  // ローカルイベント用のリスナー（同じデバイス内での通信用）
+  window.addEventListener('storage', function(e) {
+    if (e.key === 'gameState') {
+      console.log("Local storage changed:", e.newValue);
+      if (e.newValue) {
+        try {
+          const localGameState = JSON.parse(e.newValue);
+          // Firebaseが接続されていない場合にのみローカルストレージの変更を反映
+          if (fbConnectionError) {
+            updateGameDisplay(localGameState);
+          }
+        } catch (error) {
+          console.error("Error parsing local storage:", error);
+        }
+      }
+    }
+  });
+
   // マスター側：ゲーム開始
   startGameBtn.addEventListener('click', () => {
       console.log("Starting game...");
       statusMessage.textContent = "ゲーム開始中...";
       
-      // 画像パスを設定
-      const imagePath = 'puzzle.png';
+      // 画像パスを設定 - フルパスを使用
+      const baseUrl = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
+      const imagePath = baseUrl + 'puzzle.png';
       console.log("Image path:", imagePath);
       
-      // ローカルストレージにも状態を保存（フォールバック用）
-      localStorage.setItem('gameState', JSON.stringify({
+      // ゲームの状態オブジェクト
+      const gameState = {
         gameStarted: true,
         imagePath: imagePath,
         timestamp: Date.now()
-      }));
+      };
+      
+      // ローカルストレージにも状態を保存（フォールバック用）
+      localStorage.setItem('gameState', JSON.stringify(gameState));
       
       // ゲーム状態を更新
       gameStateRef.set({
@@ -78,10 +100,16 @@ try {
       .then(() => {
           console.log("Game state updated successfully");
           statusMessage.textContent = "ゲームが開始されました！";
+          
+          // ローカル表示も更新
+          updateGameDisplay(gameState);
       })
       .catch(error => {
           console.error("Error updating game state:", error);
           statusMessage.textContent = "Firebase更新エラー (ローカルモードで動作中): " + error.message;
+          
+          // Firebase更新に失敗した場合でもローカル表示を更新
+          updateGameDisplay(gameState);
       });
   });
 
@@ -90,12 +118,15 @@ try {
       console.log("Resetting game...");
       statusMessage.textContent = "リセット中...";
       
-      // ローカルストレージの状態もリセット
-      localStorage.setItem('gameState', JSON.stringify({
+      // ゲームの状態オブジェクト
+      const gameState = {
         gameStarted: false,
         imagePath: '',
         timestamp: Date.now()
-      }));
+      };
+      
+      // ローカルストレージの状態もリセット
+      localStorage.setItem('gameState', JSON.stringify(gameState));
       
       // ゲーム状態をリセット
       gameStateRef.set({
@@ -106,10 +137,16 @@ try {
       .then(() => {
           console.log("Game state reset successfully");
           statusMessage.textContent = "リセットされました";
+          
+          // ローカル表示も更新
+          updateGameDisplay(gameState);
       })
       .catch(error => {
           console.error("Error resetting game state:", error);
           statusMessage.textContent = "Firebaseリセットエラー (ローカルモードで動作中): " + error.message;
+          
+          // Firebase更新に失敗した場合でもローカル表示を更新
+          updateGameDisplay(gameState);
       });
   });
 
@@ -141,9 +178,16 @@ try {
         contentP.textContent = 'ゲームが開始されました！';
         contentP.classList.add('game-started');
         
-        // 画像を表示
+        // 画像を表示（画像がない場合はフォールバック）
         console.log("Showing image:", gameState.imagePath);
-        imageContainer.innerHTML = `<img src="${gameState.imagePath}" alt="ゲーム画像" onerror="this.onerror=null; this.src='puzzle.png';">`;
+        if (!gameState.imagePath || gameState.imagePath === '') {
+            // 画像パスがない場合はローカルのパスを使用
+            const baseUrl = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
+            const fallbackPath = baseUrl + 'puzzle.png';
+            imageContainer.innerHTML = `<img src="${fallbackPath}" alt="ゲーム画像">`;
+        } else {
+            imageContainer.innerHTML = `<img src="${gameState.imagePath}" alt="ゲーム画像" onerror="this.onerror=null; const baseUrl = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1); this.src=baseUrl+'puzzle.png'; console.log('Fallback to local path');">`;
+        }
     } else {
         // ゲームがリセットされたら待機状態に戻す
         const contentP = document.querySelector('#game-content p');

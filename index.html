@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>リアルタイムゲーム</title>
     <link rel="stylesheet" href="styles.css">
 </head>
@@ -25,10 +28,15 @@
             <h2>プレイヤー画面</h2>
             <div id="game-content">
                 <p>マスターがゲームを開始するのを待っています...</p>
-                <div id="image-container"></div>
+                <div id="image-container">
+                    <!-- 画像がここに表示されます -->
+                </div>
             </div>
         </div>
     </div>
+
+    <!-- Preload main image -->
+    <link rel="preload" href="puzzle.png" as="image">
 
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-app.js"></script>
