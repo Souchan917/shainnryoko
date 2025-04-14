@@ -13,6 +13,17 @@ document.addEventListener('DOMContentLoaded', function() {
     // ゲームの正解（今回は「りんご」に設定）
     const CORRECT_ANSWER = "りんご";
     
+    // ポイント設定
+    const POINTS_CONFIG = {
+      initial: 100,     // 初期ポイント
+      correctAnswer: 50, // 正解時に獲得するポイント
+      itemPurchase: {    // アイテム購入時の消費ポイント
+        hint: 20,        // ヒント使用
+        timeBonus: 30,   // 時間ボーナス
+        skip: 100        // 問題スキップ
+      }
+    };
+    
     // 初期設定 - gameStateコレクションにcurrentドキュメントが存在しない場合は作成
     gameStateCollection.doc('current').get()
       .then(doc => {
@@ -21,7 +32,9 @@ document.addEventListener('DOMContentLoaded', function() {
             gameStarted: false,
             imagePath: '',
             timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-            correctAnswer: CORRECT_ANSWER // 正解を追加
+            correctAnswer: CORRECT_ANSWER, // 正解を追加
+            startTime: null, // 開始時刻をリセット
+            points: POINTS_CONFIG.initial
           });
         }
       })
@@ -40,6 +53,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const registerPlayerBtn = document.getElementById('register-player-btn');
     const goToMasterBtn = document.getElementById('go-to-master-btn');
     const displayPlayerName = document.getElementById('display-player-name');
+    const playerPointsDisplay = document.getElementById('player-points');
     const startGameBtn = document.getElementById('start-game');
     const resetGameBtn = document.getElementById('reset-game');
     const imageContainer = document.getElementById('image-container');
@@ -71,7 +85,8 @@ document.addEventListener('DOMContentLoaded', function() {
       isActive: false,
       joinedAt: null,
       answered: false, // 解答済みかどうか
-      answerCorrect: false // 正解したかどうか
+      answerCorrect: false, // 正解したかどうか
+      points: POINTS_CONFIG.initial
     };
     
     // 解答した時刻を記録するための変数
@@ -112,7 +127,8 @@ document.addEventListener('DOMContentLoaded', function() {
         isActive: true,
         joinedAt: firebase.firestore.FieldValue.serverTimestamp(),
         answered: false,
-        answerCorrect: false
+        answerCorrect: false,
+        points: POINTS_CONFIG.initial
       };
       
       // Firestoreにプレイヤー情報を保存
@@ -123,13 +139,17 @@ document.addEventListener('DOMContentLoaded', function() {
           // プレイヤー名を表示
           displayPlayerName.textContent = playerName;
           
+          // ポイント表示を更新
+          updatePointsDisplay(POINTS_CONFIG.initial);
+          
           // プレイヤー画面に遷移
           showScreen('player-panel');
           
           // ローカルストレージにプレイヤー情報を保存
           localStorage.setItem('currentPlayer', JSON.stringify({
             id: playerId,
-            name: playerName
+            name: playerName,
+            points: POINTS_CONFIG.initial
           }));
         })
         .catch(error => {
@@ -137,6 +157,18 @@ document.addEventListener('DOMContentLoaded', function() {
           alert('プレイヤー登録に失敗しました。もう一度お試しください。');
         });
     });
+  
+    // ポイント表示を更新する関数
+    function updatePointsDisplay(points) {
+      if (playerPointsDisplay) {
+        playerPointsDisplay.textContent = points;
+        
+        // ポイント変動時のアニメーション効果（オプション）
+        playerPointsDisplay.classList.remove('points-updated');
+        void playerPointsDisplay.offsetWidth; // リフロー強制
+        playerPointsDisplay.classList.add('points-updated');
+      }
+    }
   
     // マスター画面への移動
     goToMasterBtn.addEventListener('click', () => {
@@ -166,7 +198,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 isActive: false,
                 joinedAt: null,
                 answered: false,
-                answerCorrect: false
+                answerCorrect: false,
+                points: POINTS_CONFIG.initial
               };
             })
             .catch(error => {
@@ -191,24 +224,30 @@ document.addEventListener('DOMContentLoaded', function() {
             snapshot.forEach(doc => {
               const player = doc.data();
               const listItem = document.createElement('li');
-              listItem.textContent = player.name;
+              
+              // プレイヤー名とポイント
+              const nameSpan = document.createElement('span');
+              nameSpan.className = 'player-name';
+              nameSpan.textContent = player.name;
+              
+              const pointsSpan = document.createElement('span');
+              pointsSpan.className = 'player-points-list';
+              pointsSpan.textContent = `${player.points || 0}pt`;
+              
+              listItem.appendChild(nameSpan);
+              listItem.appendChild(pointsSpan);
               
               // 解答済みのプレイヤーにはステータスを表示
               if (player.answered) {
                 const statusSpan = document.createElement('span');
-                statusSpan.style.marginLeft = '10px';
-                statusSpan.style.fontSize = '12px';
-                statusSpan.style.padding = '2px 5px';
-                statusSpan.style.borderRadius = '3px';
+                statusSpan.className = 'player-status';
                 
                 if (player.answerCorrect) {
                   statusSpan.textContent = '正解';
-                  statusSpan.style.backgroundColor = '#e8f5e9';
-                  statusSpan.style.color = '#4CAF50';
+                  statusSpan.classList.add('correct');
                 } else {
                   statusSpan.textContent = '不正解';
-                  statusSpan.style.backgroundColor = '#ffebee';
-                  statusSpan.style.color = '#f44336';
+                  statusSpan.classList.add('incorrect');
                 }
                 
                 listItem.appendChild(statusSpan);
@@ -351,7 +390,8 @@ document.addEventListener('DOMContentLoaded', function() {
         answerSectionVisible: !answerSection.classList.contains('hidden'),
         submitButtonDisabled: submitAnswerBtn.disabled,
         inputDisabled: playerAnswer.disabled,
-        currentPlayerId: currentPlayer.id
+        currentPlayerId: currentPlayer.id,
+        currentPoints: currentPlayer.points
       });
       
       // ゲームが開始されていない場合は何もしない
@@ -384,10 +424,20 @@ document.addEventListener('DOMContentLoaded', function() {
         currentPlayer.answered = true;
         currentPlayer.answerCorrect = true;
         
+        // 正解時にポイントを加算
+        const newPoints = currentPlayer.points + POINTS_CONFIG.correctAnswer;
+        currentPlayer.points = newPoints;
+        console.log(`正解ポイント付与: ${POINTS_CONFIG.correctAnswer}ポイント、合計: ${newPoints}ポイント`);
+        
+        // ポイント表示を更新
+        updatePointsDisplay(newPoints);
+        
         // Firestoreのプレイヤー情報を更新
         playersCollection.doc(currentPlayer.id).update({
           answered: true,
-          answerCorrect: true
+          answerCorrect: true,
+          points: newPoints,
+          lastAnswerTime: answerTime
         })
         .then(() => {
           console.log('プレイヤー情報の更新に成功しました');
@@ -420,7 +470,9 @@ document.addEventListener('DOMContentLoaded', function() {
         answer: answer,
         isCorrect: isCorrect,
         answerTime: answerTime,
-        answeredAt: firebase.firestore.FieldValue.serverTimestamp()
+        answeredAt: firebase.firestore.FieldValue.serverTimestamp(),
+        pointsEarned: isCorrect ? POINTS_CONFIG.correctAnswer : 0,
+        totalPoints: isCorrect ? currentPlayer.points : currentPlayer.points
       };
       
       answersCollection.doc(answerDocId).set(answerData)
@@ -428,7 +480,9 @@ document.addEventListener('DOMContentLoaded', function() {
           console.log('解答を記録しました', answerData);
           
           // 解答結果を表示
-          answerResult.textContent = isCorrect ? '正解です！' : '残念、不正解です。もう一度試してください。';
+          answerResult.textContent = isCorrect 
+            ? `正解です！ +${POINTS_CONFIG.correctAnswer}ポイント獲得` 
+            : '残念、不正解です。もう一度試してください。';
           answerResult.className = isCorrect ? 'correct' : 'incorrect';
           
           // 解答時間を表示（正解の場合のみ）
@@ -441,6 +495,17 @@ document.addEventListener('DOMContentLoaded', function() {
           // 正解の場合のみ入力欄を無効化
           playerAnswer.disabled = isCorrect;
           submitAnswerBtn.disabled = isCorrect;
+          
+          // ポイント情報をローカルストレージに保存
+          if (isCorrect) {
+            try {
+              const savedPlayer = JSON.parse(localStorage.getItem('currentPlayer')) || {};
+              savedPlayer.points = currentPlayer.points;
+              localStorage.setItem('currentPlayer', JSON.stringify(savedPlayer));
+            } catch (e) {
+              console.error('プレイヤー情報の保存に失敗:', e);
+            }
+          }
           
           // 不正解の場合は入力欄をクリアして再度入力可能に
           if (!isCorrect) {
@@ -481,7 +546,8 @@ document.addEventListener('DOMContentLoaded', function() {
               imagePath: imagePath,
               timestamp: firebase.firestore.FieldValue.serverTimestamp(),
               correctAnswer: CORRECT_ANSWER,
-              startTime: Date.now() // ゲーム開始時刻を追加
+              startTime: Date.now(), // ゲーム開始時刻を追加
+              points: POINTS_CONFIG.initial
             };
             
             // ローカルストレージにも状態を保存（フォールバック用）
@@ -490,7 +556,8 @@ document.addEventListener('DOMContentLoaded', function() {
               imagePath: imagePath,
               timestamp: Date.now(),
               correctAnswer: CORRECT_ANSWER,
-              startTime: Date.now() // ゲーム開始時刻を追加
+              startTime: Date.now(), // ゲーム開始時刻を追加
+              points: POINTS_CONFIG.initial
             }));
             
             // ゲーム状態を更新（gameStateドキュメントに保存）
@@ -514,7 +581,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 imagePath: imagePath,
                 timestamp: Date.now(),
                 correctAnswer: CORRECT_ANSWER,
-                startTime: Date.now() // ゲーム開始時刻を追加
+                startTime: Date.now(), // ゲーム開始時刻を追加
+                points: POINTS_CONFIG.initial
               });
               
               // 解答リストを更新
@@ -579,7 +647,8 @@ document.addEventListener('DOMContentLoaded', function() {
               imagePath: '',
               timestamp: firebase.firestore.FieldValue.serverTimestamp(),
               correctAnswer: CORRECT_ANSWER,
-              startTime: null // 開始時刻をリセット
+              startTime: null, // 開始時刻をリセット
+              points: POINTS_CONFIG.initial
             };
             
             // ローカルストレージの状態もリセット
@@ -588,7 +657,8 @@ document.addEventListener('DOMContentLoaded', function() {
               imagePath: '',
               timestamp: Date.now(),
               correctAnswer: CORRECT_ANSWER,
-              startTime: null // 開始時刻をリセット
+              startTime: null, // 開始時刻をリセット
+              points: POINTS_CONFIG.initial
             }));
             
             // ゲーム状態をリセット
@@ -612,7 +682,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 imagePath: '',
                 timestamp: Date.now(),
                 correctAnswer: CORRECT_ANSWER,
-                startTime: null // 開始時刻をリセット
+                startTime: null, // 開始時刻をリセット
+                points: POINTS_CONFIG.initial
               });
               
               // 解答リストを更新
@@ -651,7 +722,9 @@ document.addEventListener('DOMContentLoaded', function() {
               gameStarted: false,
               imagePath: '',
               timestamp: Date.now(),
-              correctAnswer: CORRECT_ANSWER
+              correctAnswer: CORRECT_ANSWER,
+              startTime: null,
+              points: POINTS_CONFIG.initial
             };
             updateGameDisplay(initialState);
           }
@@ -693,6 +766,10 @@ document.addEventListener('DOMContentLoaded', function() {
       
       console.log('updateGameDisplay:', gameState);
       
+      // 現在のプレイヤーの情報が存在すれば、ポイント表示を更新
+      if (currentPlayer && currentPlayer.id && playerPointsDisplay) {
+        updatePointsDisplay(currentPlayer.points || POINTS_CONFIG.initial);
+      }
       if (gameState && gameState.gameStarted) {
           // ゲームが開始されたら画像を表示
           contentP.textContent = 'ゲームが開始されました！';
@@ -709,10 +786,6 @@ document.addEventListener('DOMContentLoaded', function() {
               playerAnswer.disabled = true;
               submitAnswerBtn.disabled = true;
               
-              // 正解メッセージを表示
-              answerResult.textContent = '正解です！';
-              answerResult.className = 'correct';
-              
               // 最新の解答時間を取得して表示
               playersCollection.doc(currentPlayer.id).get()
                 .then(doc => {
@@ -720,6 +793,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     const playerData = doc.data();
                     if (playerData.lastAnswerTime) {
                       answerTime.textContent = `解答時間: ${playerData.lastAnswerTime.toFixed(2)}秒`;
+                    }
+                    
+                    // ポイント情報を同期
+                    if (playerData.points !== undefined && playerData.points !== currentPlayer.points) {
+                      currentPlayer.points = playerData.points;
+                      updatePointsDisplay(playerData.points);
                     }
                   }
                 })
@@ -739,10 +818,20 @@ document.addEventListener('DOMContentLoaded', function() {
                       if (playerData.lastAnswer && !playerData.answerCorrect) {
                         answerResult.textContent = '残念、不正解です。もう一度試してください。';
                         answerResult.className = 'incorrect';
+                      } else if (playerData.answerCorrect) {
+                        // 正解の場合
+                        answerResult.textContent = `正解です！ +${POINTS_CONFIG.correctAnswer}ポイント獲得`;
+                        answerResult.className = 'correct';
                       } else {
                         // 解答結果表示をクリア
                         answerResult.textContent = '';
                         answerResult.className = '';
+                      }
+                      
+                      // ポイント情報を同期
+                      if (playerData.points !== undefined && playerData.points !== currentPlayer.points) {
+                        currentPlayer.points = playerData.points;
+                        updatePointsDisplay(playerData.points);
                       }
                     }
                   })
@@ -849,6 +938,35 @@ document.addEventListener('DOMContentLoaded', function() {
         const playerData = JSON.parse(savedPlayer);
         if (playerData.name) {
           playerNameInput.value = playerData.name;
+        }
+        
+        // ポイント情報が保存されていれば復元
+        if (playerData.id && playerData.points !== undefined) {
+          // サーバーから最新のプレイヤー情報を取得
+          playersCollection.doc(playerData.id).get()
+            .then(doc => {
+              if (doc.exists) {
+                const serverPlayerData = doc.data();
+                // サーバー上のデータがある場合はそちらを優先
+                currentPlayer = {
+                  ...currentPlayer,
+                  ...serverPlayerData
+                };
+                
+                // ポイント表示を更新
+                if (playerPointsDisplay) {
+                  updatePointsDisplay(currentPlayer.points);
+                }
+              } else {
+                // サーバー上にデータがなければローカルデータを使用
+                currentPlayer.points = playerData.points;
+              }
+            })
+            .catch(error => {
+              console.error('プレイヤー情報の取得に失敗:', error);
+              // エラー時はローカルデータを使用
+              currentPlayer.points = playerData.points;
+            });
         }
       } catch (e) {
         console.error('保存されたプレイヤー情報の解析に失敗:', e);
