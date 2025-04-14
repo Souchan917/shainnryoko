@@ -142,7 +142,21 @@ const puzzleComponent = {
       img.src = puzzle.imageUrl;
       img.alt = '謎解き問題の画像';
       img.className = 'puzzle-image';
+      img.style.maxWidth = '100%';
+      img.style.height = 'auto';
+      img.style.display = 'block';
+      img.style.margin = '20px auto';
+      img.style.boxShadow = '0 5px 15px rgba(0, 0, 0, 0.5)';
+      img.style.borderRadius = '8px';
       this.elements.puzzleContent.appendChild(img);
+      
+      // 画像読み込みエラー時の処理
+      img.onerror = () => {
+        console.error('画像の読み込みに失敗しました:', puzzle.imageUrl);
+        img.src = 'data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22100%22%20height%3D%22100%22%3E%3Crect%20fill%3D%22%23e74c3c%22%20width%3D%22100%22%20height%3D%22100%22%2F%3E%3Ctext%20fill%3D%22%23fff%22%20font-family%3D%22sans-serif%22%20font-size%3D%2214%22%20x%3D%2220%22%20y%3D%2255%22%3E画像なし%3C%2Ftext%3E%3C%2Fsvg%3E';
+        img.style.border = '1px solid #e74c3c';
+        this.elements.puzzleContent.appendChild(document.createTextNode('画像の読み込みに失敗しました'));
+      };
     }
     
     // 解答欄の表示

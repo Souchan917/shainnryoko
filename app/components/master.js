@@ -186,11 +186,39 @@ const masterComponent = {
     }
     
     try {
-      // 「進行中」に変更した場合、現在のアクティブな問題の画像URLをpuzzle1.pngに設定
-      if (status === 'active' && this.activePuzzleId) {
-        await firebaseUtils.db.collection('puzzles')
-          .doc(this.activePuzzleId)
-          .update({ imageUrl: 'puzzle1.png' });
+      // 「進行中」に変更した場合の処理
+      if (status === 'active') {
+        // もしアクティブな問題がなければ、新しい問題を作成
+        if (!this.activePuzzleId) {
+          // デフォルトの問題を作成
+          const title = this.elements.puzzleTitle.value.trim() || '謎解き問題';
+          const description = this.elements.puzzleDescription.value.trim() || '下の画像を解読して答えを導き出してください。';
+          const answer = this.elements.puzzleAnswer.value.trim() || 'デフォルト解答';
+          
+          if (title && description && answer) {
+            const puzzleRef = firebaseUtils.db.collection('puzzles').doc();
+            await puzzleRef.set({
+              title: title,
+              description: description,
+              imageUrl: 'puzzle1.png',
+              answer: answer,
+              status: 'active',
+              createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            
+            this.activePuzzleId = puzzleRef.id;
+            this.showNotification('問題を自動作成しました', 'success');
+          }
+        } 
+        // 既存のアクティブな問題がある場合、画像URLを更新
+        else {
+          await firebaseUtils.db.collection('puzzles')
+            .doc(this.activePuzzleId)
+            .update({ 
+              imageUrl: 'puzzle1.png',
+              status: 'active'
+            });
+        }
       }
       
       const result = await firebaseUtils.updateGameState({
