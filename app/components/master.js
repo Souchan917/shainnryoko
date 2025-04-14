@@ -186,6 +186,13 @@ const masterComponent = {
     }
     
     try {
+      // 「進行中」に変更した場合、現在のアクティブな問題の画像URLをpuzzle1.pngに設定
+      if (status === 'active' && this.activePuzzleId) {
+        await firebaseUtils.db.collection('puzzles')
+          .doc(this.activePuzzleId)
+          .update({ imageUrl: 'puzzle1.png' });
+      }
+      
       const result = await firebaseUtils.updateGameState({
         status: status,
         statusText: statusText,
@@ -213,7 +220,7 @@ const masterComponent = {
     
     const title = this.elements.puzzleTitle.value.trim();
     const description = this.elements.puzzleDescription.value.trim();
-    const imageUrl = this.elements.puzzleImageUrl.value.trim();
+    const imageUrl = this.elements.gameStatusSelect.value === 'active' ? 'puzzle1.png' : this.elements.puzzleImageUrl.value.trim();
     const answer = this.elements.puzzleAnswer.value.trim();
     
     if (!title || !description || !answer) {
