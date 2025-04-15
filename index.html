@@ -48,7 +48,7 @@
                 <!-- 解答欄 -->
                 <div id="answer-section" class="hidden">
                     <div class="form-group">
-                        <input type="text" id="player-answer" placeholder="答えを入力してください" autocomplete="off">
+                        <input type="text" id="answer-input" placeholder="答えを入力してください" autocomplete="off">
                         <button id="submit-answer-btn">回答する</button>
                     </div>
                     <div id="answer-result"></div>
@@ -62,8 +62,21 @@
         <div id="master-panel" class="hidden-screen">
             <h2>マスター画面</h2>
             <div class="master-controls">
-                <button id="start-game">ゲームスタート</button>
-                <button id="reset-game">リセット</button>
+                <!-- ステージ選択機能 -->
+                <div class="stage-selection">
+                    <label for="stage-selector">ステージ選択:</label>
+                    <select id="stage-selector">
+                        <option value="stage1">ステージ1: りんご</option>
+                        <option value="stage2">ステージ2: バナナ</option>
+                        <option value="stage3">ステージ3: みかん</option>
+                    </select>
+                </div>
+                
+                <div class="game-buttons">
+                    <button id="start-game">ゲームスタート</button>
+                    <button id="end-game" disabled>ゲーム終了</button>
+                    <button id="reset-game">リセット</button>
+                </div>
                 <div id="status-message"></div>
             </div>
             <div class="players-list">
