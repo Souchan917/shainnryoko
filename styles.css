@@ -51,8 +51,7 @@ button {
     border-radius: 8px;
     font-size: 1rem;
     transition: background-color 0.3s;
-    min-height: 48px; /* タッチしやすいサイズに拡大 */
-    min-width: 48px; /* タッチしやすい最小幅 */
+    min-height: 44px; /* タッチしやすいサイズ */
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     font-weight: bold;
 }
@@ -109,7 +108,7 @@ button:hover, button:active {
     border: 1px solid #ddd;
     border-radius: 8px;
     font-size: 1rem;
-    min-height: 48px; /* タッチしやすいサイズに拡大 */
+    min-height: 44px; /* タッチしやすいサイズ */
 }
 
 #register-player-btn {
@@ -442,82 +441,75 @@ button:hover, button:active {
     align-self: flex-end;
 }
 
-/* モバイル向け最適化 */
-button, input[type="submit"] {
-    min-height: 48px;
-    min-width: 48px;
-    padding: 12px 20px;
-    transition: background-color 0.2s, transform 0.1s;
-}
-
-button:active, input[type="submit"]:active {
-    transform: scale(0.98);
-}
-
-/* iPhone Safariでフォーム入力時に拡大されるのを防ぐ */
-input[type="text"], input[type="number"], select, textarea {
-    font-size: 16px;
-    min-height: 48px;
-    padding: 10px 15px;
-}
-
-/* レスポンシブデザイン */
+/* メディアクエリ - スマホ用の調整 */
 @media screen and (max-width: 480px) {
-    body {
-        font-size: 16px;
+    html {
+        font-size: 14px; /* スマホ用にフォントサイズを少し小さく */
     }
     
     .container {
-        padding: 10px;
+        padding: 15px 10px;
     }
     
     h1 {
-        font-size: 24px;
+        font-size: 1.6rem;
     }
     
     h2 {
-        font-size: 22px;
+        font-size: 1.4rem;
     }
     
     h3 {
-        font-size: 18px;
+        font-size: 1.2rem;
     }
     
-    .form-group {
-        margin-bottom: 15px;
+    button {
+        padding: 10px 15px;
+        margin: 8px 5px;
     }
     
-    /* 解答欄をモバイルフレンドリーにする */
-    #answer-section .form-group {
-        display: flex;
+    #player-registration, #player-panel, #master-panel {
+        padding: 15px;
+        margin: 10px 0;
+    }
+    
+    .form-group input, #player-answer {
+        padding: 10px 12px;
+    }
+    
+    #connected-players li, #player-answers li {
+        padding: 8px 12px;
+        margin: 6px 0;
+    }
+    
+    .player-status {
+        font-size: 10px;
+        padding: 2px 4px;
+    }
+    
+    /* スマホで2列表示にする */
+    @media screen and (min-width: 360px) {
+        #answer-section .form-group {
+            flex-direction: row;
+        }
+        
+        #player-answer {
+            width: 70%;
+        }
+        
+        #submit-answer-btn {
+            width: 30%;
+        }
+    }
+    
+    /* マスター画面のプレイヤーリストと解答状況を調整 */
+    #player-answers li {
         flex-direction: column;
     }
     
-    #answer-section .form-group input {
-        margin-bottom: 10px;
-        width: 100%;
-    }
-    
-    #answer-section .form-group button {
-        width: 100%;
-    }
-    
-    /* 画像コンテナの調整 */
-    #image-container img {
-        max-width: 100%;
-        height: auto;
-    }
-    
-    /* マスターコントロールの調整 */
-    .master-controls button {
-        margin: 5px;
-        width: calc(50% - 10px);
-    }
-    
-    /* プレイヤーリストと解答状況の調整 */
-    .players-list, .answers-container {
-        max-height: 200px;
-        overflow-y: auto;
+    #player-answers .answer-time {
+        margin-top: 5px;
+        align-self: flex-start;
     }
 }
 
