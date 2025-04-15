@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const gameStateCollection = db.collection('gameState');
     const playersCollection = db.collection('players');
     const answersCollection = db.collection('answers');
-    const readyPlayersCollection = db.collection('readyPlayers'); // 準備完了プレイヤー管理用
+    const readyStateCollection = db.collection('readyState');
     
     // ステージ設定
     const STAGES = {
@@ -83,6 +83,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function createGameState(started, stage = currentStage, imagePath = '', startTime = null) {
       return {
         gameStarted: started,
+        gamePreparing: false,
         stageId: stage.id,
         stageName: stage.name,
         correctAnswer: stage.correctAnswer,
@@ -93,7 +94,6 @@ document.addEventListener('DOMContentLoaded', function() {
         startTime: startTime,
         countdown: false,
         countdownValue: null,
-        preparing: false, // 準備中かどうかのフラグ
         lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
       };
     }
@@ -155,7 +155,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const goToMasterBtn = document.getElementById('go-to-master-btn');
     const displayPlayerName = document.getElementById('display-player-name');
     const playerPointsDisplay = document.getElementById('player-points');
-    const prepareGameBtn = document.getElementById('prepare-game'); // 準備ボタン
     const startGameBtn = document.getElementById('start-game');
     const showResultsBtn = document.getElementById('show-results'); // 結果発表ボタン
     const resetGameBtn = document.getElementById('reset-game');
@@ -163,12 +162,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const statusMessage = document.getElementById('status-message') || document.createElement('div'); // ステータスメッセージ要素がない場合の対策
     const connectedPlayersList = document.getElementById('connected-players');
     const backToRegistrationBtns = document.querySelectorAll('#back-to-registration');
-    
-    // 準備状況表示関連の要素
-    const preparationStatus = document.getElementById('preparation-status');
-    const readyStatus = document.querySelector('.ready-status');
-    const readyPlayersCount = document.getElementById('ready-players-count');
-    const totalPlayersCount = document.getElementById('total-players-count');
     
     // カウントダウン関連の要素
     const countdownOverlay = document.querySelector('.countdown-overlay');
@@ -789,25 +782,20 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('選択されたステージ:', currentStage.name);
         console.log('正解:', CORRECT_ANSWER);
         
-        // ready-to-startクラスを削除
-        startGameBtn.classList.remove('ready-to-start');
-        
         // カウントダウン開始を示すフラグを設定
         const countdownState = {
           countdown: true,
           startTime: firebase.firestore.FieldValue.serverTimestamp(),
-          countdownSeconds: 3, // 3秒カウントダウン
-          preparing: false // 準備中フラグをOFF
+          countdownSeconds: 3 // 5秒から3秒にカウントダウン時間を短縮
         };
         
         // カウントダウンステータスをFirestoreに保存
         await gameStateCollection.doc('current').update({
           countdown: true,
           countdownStartTime: firebase.firestore.FieldValue.serverTimestamp(),
-          countdownSeconds: 3,
+          countdownSeconds: 3, // 5秒から3秒に変更
           selectedStageId: selectedStageId,
-          selectedStageName: currentStage.name,
-          preparing: false // 準備中フラグをOFF
+          selectedStageName: currentStage.name
         });
         
         updateGameStatus(`カウントダウン開始...`);
@@ -1054,29 +1042,29 @@ document.addEventListener('DOMContentLoaded', function() {
     // ゲーム表示の更新関数
     function updateGameDisplay(gameState) {
       if (!gameState) return;
-
-      // ランキング表示の処理
-      if (gameState.showRanking && gameState.rankingStageId) {
-        // ランキングを表示
-        showRankingResults(gameState.rankingData || [], gameState.stageName || '不明なステージ');
-      }
-
-      // ゲーム開始時刻を設定（解答時間計算用）
-      if (gameState.gameStarted && gameState.startTime) {
-        // 新しいゲーム開始かどうかを判断するための変数
-        const isNewGame = !currentPlayer.stageId || currentPlayer.stageId !== gameState.stageId;
-        
-        if (typeof gameState.startTime === 'object' && gameState.startTime.toDate) {
-          // Firestoreのタイムスタンプオブジェクトの場合
-          gameStartTime = gameState.startTime.toDate().getTime();
-        } else if (typeof gameState.startTime === 'string') {
-          // ISOString形式の場合
-          gameStartTime = new Date(gameState.startTime).getTime();
-        } else {
-          // その他の形式またはミリ秒タイムスタンプの場合
-          gameStartTime = gameState.startTime;
+      
+      // ゲームが開始された時としていない時でスタイルを変更
+      const gameContent = document.getElementById('game-content');
+      const answerSection = document.getElementById('answer-section');
+      
+      // 状態変更を検知
+      const isNewGame = currentPlayer.stageId !== gameState.stageId;
+      
+      // 画像パスの変更を検知
+      const imageChanged = imageContainer && imageContainer.dataset.currentImage !== gameState.imagePath;
+      
+      // ゲームが開始された時
+      if (gameState.gameStarted) {
+        if (gameContent) {
+          const statusText = `ゲームが開始されました: ${gameState.stageName}`;
+          gameContent.querySelector('p') && (gameContent.querySelector('p').textContent = statusText);
+          gameContent.querySelector('p') && gameContent.querySelector('p').classList.add('game-started');
         }
-        console.log('ゲーム開始時刻を設定:', gameStartTime);
+        
+        // 解答欄を表示
+        if (answerSection) {
+          answerSection.classList.remove('hidden');
+        }
         
         // 新しいゲームが始まった場合のみ、入力欄を有効化し、前回の解答結果をクリア
         if (isNewGame) {
@@ -1137,60 +1125,131 @@ document.addEventListener('DOMContentLoaded', function() {
           }
         }
       } else if (!gameState.gameStarted) {
+        // ゲームが開始されていない時
         gameStartTime = null;
         console.log('ゲーム開始時刻をリセットしました');
+        
+        // 解答欄を非表示
+        if (answerSection) {
+          answerSection.classList.add('hidden');
+        }
+        
+        if (gameContent) {
+          const statusText = gameState.gamePreparing 
+            ? `準備中: ${gameState.stageName}` 
+            : 'マスターがゲームを開始するのを待っています...';
+          gameContent.querySelector('p') && (gameContent.querySelector('p').textContent = statusText);
+          gameContent.querySelector('p') && gameContent.querySelector('p').classList.remove('game-started');
+        }
         
         // ヒントセクションを非表示
         if (hintSection) {
           hintSection.classList.add('hidden');
         }
       }
-
-      // 画像を表示
-      const imageContainer = document.getElementById('image-container');
-      if (imageContainer && gameState) {
-        if (gameState.gameStarted && gameState.imagePath) {
-          // 画像を表示
-          imageContainer.innerHTML = `<img id="puzzle-image" src="${gameState.imagePath}" alt="${gameState.stageName || 'ゲーム画像'}" style="max-width: 100%; height: auto; border-radius: 8px;">`;
+      
+      // 準備モードの処理
+      if (gameState.gamePreparing) {
+        console.log('ゲーム準備モードが有効です');
+        
+        // プレイヤー画面: 準備セクションを表示
+        if (preparationSection) {
+          preparationSection.classList.remove('hidden');
           
-          // ゲーム中のメッセージ
-          const gameContentP = document.querySelector('#game-content > p');
-          if (gameContentP) {
-            gameContentP.textContent = `ゲームが開始されました！ステージ: ${gameState.stageName || ''}`;
-            gameContentP.classList.add('game-started');
+          // 画像をプリロード (新しい画像の場合のみ)
+          if (imageChanged) {
+            prepareGameImages(gameState);
           }
+        }
+        
+        // マスター画面: 準備ボタンの表示を更新
+        if (prepareGameBtn) {
+          prepareGameBtn.textContent = '準備中...';
+          prepareGameBtn.classList.add('preparing');
           
-          // 解答欄を表示
-          if (answerSection) {
-            answerSection.classList.remove('hidden');
+          // 準備状況をリアルタイムで監視
+          readyStateCollection.onSnapshot(snapshot => {
+            const readyPlayers = [];
             
-            // 新しいステージでなければ、かつプレイヤーが正解していない場合のみ入力欄をクリア
-            if (playerAnswer && (!currentPlayer.answerCorrect || currentPlayer.stageId !== gameState.stageId)) {
-              // 正解済みプレイヤーの場合は入力欄をクリアしない
-              if (!currentPlayer.answerCorrect) {
-                playerAnswer.value = '';
-                playerAnswer.focus();
+            snapshot.forEach(doc => {
+              const data = doc.data();
+              if (data.isReady) {
+                readyPlayers.push({
+                  id: data.playerId,
+                  name: data.playerName
+                });
               }
+            });
+            
+            // 準備完了プレイヤー数を表示
+            playersCollection.get().then(playerSnapshot => {
+              let playerCount = 0;
+              playerSnapshot.forEach(doc => {
+                if (!doc.data().isMaster) {
+                  playerCount++;
+                }
+              });
+              
+              updateGameStatus(`準備完了: ${readyPlayers.length}/${playerCount}人のプレイヤーが準備完了`);
+              
+              // 全員が準備完了した場合
+              if (readyPlayers.length > 0 && readyPlayers.length === playerCount) {
+                updateGameStatus('全員の準備が完了しました！ゲームを開始できます');
+                
+                // 準備ボタンの表示を更新
+                prepareGameBtn.textContent = 'ゲーム準備完了';
+                prepareGameBtn.classList.remove('preparing');
+                prepareGameBtn.classList.add('ready');
+              }
+            });
+          });
+        }
+      } else {
+        // 準備モードでない場合は準備セクションを非表示
+        if (preparationSection) {
+          preparationSection.classList.add('hidden');
+        }
+        
+        // マスター画面: 準備ボタンの表示をリセット
+        if (prepareGameBtn) {
+          prepareGameBtn.textContent = 'ゲーム準備';
+          prepareGameBtn.classList.remove('preparing');
+          prepareGameBtn.classList.remove('ready');
+        }
+      }
+      
+      // 画像を表示
+      if (imageContainer) {
+        if (gameState.gameStarted && gameState.imagePath) {
+          // ゲームが開始された場合のみ画像を表示
+          imageContainer.classList.remove('preparing');
+          
+          // 画像が変更された場合または保存済みの画像がある場合
+          if (imageChanged || imageContainer.dataset.loadedImage) {
+            // コンテナをクリア
+            while (imageContainer.firstChild) {
+              imageContainer.removeChild(imageContainer.firstChild);
             }
+            
+            // 新しい画像を作成して追加
+            const img = document.createElement('img');
+            img.src = imageContainer.dataset.loadedImage || gameState.imagePath;
+            img.alt = gameState.stageName || 'ゲーム画像';
+            imageContainer.appendChild(img);
+            
+            // 現在の画像パスを保存
+            imageContainer.dataset.currentImage = gameState.imagePath;
+            
+            console.log('画像を表示しました:', gameState.imagePath);
           }
+        } else if (gameState.gamePreparing) {
+          // 準備モード中は画像を表示しない（既に処理済み）
         } else {
-          // ゲームが開始されていない場合
+          // ゲームが開始されていないかつ準備モードでもない場合
+          imageContainer.classList.remove('preparing');
           imageContainer.innerHTML = '';
-          
-          // 待機中のメッセージ
-          const gameContentP = document.querySelector('#game-content > p');
-          if (gameContentP) {
-            gameContentP.textContent = 'マスターがゲームを開始するのを待っています...';
-            gameContentP.classList.remove('game-started');
-          }
-          
-          // 解答欄を非表示
-          if (answerSection) {
-            answerSection.classList.add('hidden');
-          }
-          
-          // 解答関連の状態をリセット
-          resetAnswerInput();
+          imageContainer.dataset.currentImage = '';
+          imageContainer.dataset.loadedImage = '';
         }
       }
     }
@@ -1713,208 +1772,188 @@ document.addEventListener('DOMContentLoaded', function() {
       console.log('保存されたプレイヤー情報がないため、登録画面を表示します');
     }
 
-    // 画像プリロード関数
+    // 準備状態関連の要素
+    const prepareGameBtn = document.getElementById('prepare-game');
+    const preparationSection = document.getElementById('preparation-section');
+    const readyBtn = document.getElementById('ready-btn');
+    const loadStatus = document.getElementById('load-status');
+    const progressBar = document.querySelector('.progress');
+
+    // 画像のプリロード関数
     function preloadImage(url) {
       return new Promise((resolve, reject) => {
         const img = new Image();
         img.onload = () => resolve(img);
-        img.onerror = () => reject(new Error(`画像のロードに失敗しました: ${url}`));
+        img.onerror = () => reject(new Error(`Failed to load image: ${url}`));
         img.src = url;
       });
     }
 
-    // 準備完了状態を更新する関数
-    async function updateReadyState(isReady = true) {
+    // 画像のプリロード処理
+    async function prepareGameImages(gameState) {
+      if (!gameState || !gameState.imagePath) {
+        console.error('画像パスがありません');
+        return false;
+      }
+      
+      try {
+        // プリロード状態を初期化
+        if (progressBar) progressBar.style.width = '0%';
+        if (loadStatus) loadStatus.textContent = '画像をロード中（0%）';
+        
+        // 画像コンテナを非表示または代替表示に
+        if (imageContainer) {
+          // 画像コンテナを空にして「準備中」メッセージを表示
+          imageContainer.innerHTML = '';
+          imageContainer.classList.add('preparing');
+          const preparingMsg = document.createElement('div');
+          preparingMsg.className = 'preparing-message';
+          preparingMsg.textContent = '画像準備中...';
+          imageContainer.appendChild(preparingMsg);
+        }
+        
+        // プリロード準備
+        console.log(`画像をプリロードします: ${gameState.imagePath}`);
+        
+        // 進捗表示のモック（実際は非同期処理）
+        let progress = 0;
+        const progressInterval = setInterval(() => {
+          progress += 5;
+          if (progress <= 90) {
+            if (progressBar) progressBar.style.width = `${progress}%`;
+            if (loadStatus) loadStatus.textContent = `画像をロード中（${progress}%）`;
+          }
+        }, 100);
+        
+        // 実際のプリロード処理
+        const loadedImage = await preloadImage(gameState.imagePath);
+        console.log('画像のプリロードが完了しました');
+        
+        // 進捗表示の完了
+        clearInterval(progressInterval);
+        if (progressBar) progressBar.style.width = '100%';
+        if (loadStatus) loadStatus.textContent = '画像のロードが完了しました！';
+        
+        // 準備完了ボタンを有効化
+        if (readyBtn) {
+          readyBtn.disabled = false;
+        }
+        
+        // 画像は保存するが表示はまだしない
+        if (imageContainer) {
+          // 画像データを保存するが表示はしない
+          imageContainer.dataset.loadedImage = gameState.imagePath;
+          // 「準備完了」メッセージに更新
+          imageContainer.innerHTML = '';
+          const readyMsg = document.createElement('div');
+          readyMsg.className = 'ready-message';
+          readyMsg.textContent = '準備完了！ゲーム開始をお待ちください';
+          imageContainer.appendChild(readyMsg);
+        }
+        
+        return true;
+      } catch (error) {
+        console.error('画像のプリロードに失敗しました:', error);
+        if (loadStatus) loadStatus.textContent = 'エラー: 画像のロードに失敗しました。';
+        return false;
+      }
+    }
+
+    // プレイヤーの準備状態を更新する関数
+    async function updatePlayerReadyState(isReady) {
       if (!currentPlayer.id) return;
       
       try {
-        if (isReady) {
-          // 準備完了
-          await readyPlayersCollection.doc(currentPlayer.id).set({
-            playerId: currentPlayer.id,
-            playerName: currentPlayer.name,
-            readyAt: firebase.firestore.FieldValue.serverTimestamp(),
-            stageId: currentPlayer.stageId
-          });
-          console.log('準備完了状態を送信しました:', currentPlayer.name);
-        } else {
-          // 準備解除
-          await readyPlayersCollection.doc(currentPlayer.id).delete();
-          console.log('準備完了状態を解除しました:', currentPlayer.name);
+        // 準備状態の更新
+        await readyStateCollection.doc(currentPlayer.id).set({
+          playerId: currentPlayer.id,
+          playerName: currentPlayer.name,
+          isReady: isReady,
+          timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+          stageId: currentPlayer.stageId
+        });
+        
+        console.log(`プレイヤー ${currentPlayer.name} の準備状態を更新: ${isReady}`);
+        
+        // ボタン表示を更新
+        if (readyBtn) {
+          if (isReady) {
+            readyBtn.textContent = '準備完了！';
+            readyBtn.classList.add('ready');
+          } else {
+            readyBtn.textContent = '準備完了';
+            readyBtn.classList.remove('ready');
+          }
         }
+        
+        // プレイヤーの状態も更新
+        currentPlayer.isReady = isReady;
+        
       } catch (error) {
-        console.error('準備完了状態の更新に失敗:', error);
+        console.error('準備状態の更新に失敗しました:', error);
       }
     }
 
-    // 準備完了状態を表示する関数
-    function updateReadyPlayersUI(readyCount, totalCount) {
-      if (readyPlayersCount && totalPlayersCount) {
-        readyPlayersCount.textContent = readyCount;
-        totalPlayersCount.textContent = totalCount;
-      }
-      
-      if (readyStatus) {
-        readyStatus.classList.remove('hidden');
-      }
-    }
-
-    // ゲーム状態リスナーで準備中状態の監視を追加
-    async function handleGamePreparation(gameState) {
-      if (!gameState) return;
-      
-      // 準備中フラグがONの場合
-      if (gameState.preparing && !currentPlayer.isReady) {
-        console.log('ゲーム準備中、画像をプリロードします:', gameState.imagePath);
+    // 準備状態をリセットする関数
+    async function resetReadyStates() {
+      try {
+        // readyStateコレクションの全ドキュメントを削除
+        const snapshot = await readyStateCollection.get();
+        const batch = db.batch();
         
-        // 準備状態表示を表示
-        if (preparationStatus) {
-          preparationStatus.classList.remove('hidden');
-        }
+        snapshot.forEach(doc => {
+          batch.delete(doc.ref);
+        });
         
-        try {
-          // 画像のプリロード
-          const imagePath = gameState.imagePath;
-          if (imagePath) {
-            await preloadImage(imagePath);
-            console.log('画像のプリロードが完了しました:', imagePath);
-            
-            // 準備完了状態を送信
-            await updateReadyState(true);
-            currentPlayer.isReady = true;
-            
-            // ローカルUIを更新
-            if (readyStatus) {
-              readyStatus.classList.remove('hidden');
-            }
-          }
-        } catch (error) {
-          console.error('画像のプリロードに失敗:', error);
-          // エラーメッセージを表示
-          if (preparationStatus) {
-            const errorMsg = document.createElement('p');
-            errorMsg.textContent = '画像のロードに失敗しました。ネットワーク接続を確認してください。';
-            errorMsg.style.color = 'red';
-            preparationStatus.appendChild(errorMsg);
-          }
-        }
-      } else if (!gameState.preparing && currentPlayer.isReady) {
-        // 準備中フラグがOFFになった場合
-        currentPlayer.isReady = false;
-        
-        // 準備状態表示を非表示
-        if (preparationStatus) {
-          preparationStatus.classList.add('hidden');
-        }
-        
-        // 準備完了状態を解除
-        await updateReadyState(false);
+        await batch.commit();
+        console.log('全プレイヤーの準備状態をリセットしました');
+      } catch (error) {
+        console.error('準備状態のリセットに失敗しました:', error);
       }
     }
 
     // ゲーム準備ボタンのイベントリスナー
-    prepareGameBtn.addEventListener('click', async () => {
-      try {
-        // 選択されたステージを取得
-        const stageSelector = document.getElementById('stage-selector');
-        const selectedStageId = stageSelector ? stageSelector.value : 'stage1';
-        const selectedStage = STAGES[selectedStageId];
-        
-        if (!selectedStage) {
-          console.error('選択されたステージが見つかりません:', selectedStageId);
-          updateGameStatus('ステージ設定エラー');
-          return;
+    if (prepareGameBtn) {
+      prepareGameBtn.addEventListener('click', async () => {
+        try {
+          // ステージ選択から現在のステージを取得
+          const stageSelector = document.getElementById('stage-selector');
+          if (!stageSelector) throw new Error('ステージセレクタが見つかりません');
+          
+          const selectedStageId = stageSelector.value;
+          const selectedStage = STAGES[selectedStageId];
+          
+          if (!selectedStage) throw new Error('選択されたステージが無効です');
+          
+          // 準備状態をリセット
+          await resetReadyStates();
+          
+          // ゲーム状態を更新
+          const gameState = createGameState(false, selectedStage);
+          gameState.gamePreparing = true;
+          
+          await gameStateCollection.doc('current').set(gameState);
+          
+          console.log('ゲーム準備モードを開始しました:', selectedStage.name);
+          updateGameStatus(`ゲーム準備モードを開始しました: ${selectedStage.name}`);
+          
+          // ボタンの見た目を変更
+          prepareGameBtn.textContent = '準備中...';
+          prepareGameBtn.classList.add('preparing');
+          
+        } catch (error) {
+          console.error('ゲーム準備の開始に失敗しました:', error);
+          updateGameStatus('ゲーム準備の開始に失敗しました');
         }
-        
-        // 準備中ゲーム状態を作成
-        const gameState = createGameState(false, selectedStage);
-        gameState.preparing = true; // 準備中フラグをON
-        
-        // 準備中状態をFirestoreに保存
-        await gameStateCollection.doc('current').set(gameState);
-        
-        // 準備完了プレイヤー情報をリセット
-        const readyPlayersSnapshot = await readyPlayersCollection.get();
-        const batch = db.batch();
-        readyPlayersSnapshot.forEach(doc => {
-          batch.delete(readyPlayersCollection.doc(doc.id));
-        });
-        await batch.commit();
-        
-        // 準備中ステータスの表示
-        updateGameStatus(`「${selectedStage.name}」の準備を開始しました。プレイヤーの画像ロードを待っています...`);
-        
-        // 準備完了状態の監視を開始
-        startReadyPlayersListener();
-      } catch (error) {
-        console.error('ゲーム準備エラー:', error);
-        updateGameStatus('ゲーム準備に失敗しました');
-      }
-    });
-    
-    // 準備完了プレイヤーの監視
-    function startReadyPlayersListener() {
-      return readyPlayersCollection.onSnapshot(snapshot => {
-        const readyPlayers = [];
-        snapshot.forEach(doc => {
-          readyPlayers.push(doc.data());
-        });
-        
-        // プレイヤー数の取得
-        playersCollection.where('isActive', '==', true).get().then(playersSnapshot => {
-          let totalActivePlayers = 0;
-          playersSnapshot.forEach(doc => {
-            const player = doc.data();
-            if (!player.isMaster) totalActivePlayers++;
-          });
-          
-          // ステータス更新
-          const readyCount = readyPlayers.length;
-          updateGameStatus(`${readyCount}/${totalActivePlayers}人のプレイヤーが準備完了`);
-          
-          // マスターUI側の準備完了表示をアップデート
-          if (readyPlayersCount && totalPlayersCount) {
-            readyPlayersCount.textContent = readyCount;
-            totalPlayersCount.textContent = totalActivePlayers;
-          }
-          
-          // 全員が準備完了したら通知
-          if (readyCount > 0 && readyCount >= totalActivePlayers) {
-            updateGameStatus('全プレイヤーの準備が完了しました！ゲームを開始できます');
-            
-            // スタートボタンを強調表示
-            if (startGameBtn) {
-              startGameBtn.classList.add('ready-to-start');
-            }
-          }
-        });
-      }, error => {
-        console.error('準備完了プレイヤー監視エラー:', error);
       });
     }
-    
-    // ゲーム状態の監視を開始
-    function startGameStateListener() {
-      return gameStateCollection.doc('current').onSnapshot(doc => {
-        if (doc.exists) {
-          const gameState = doc.data();
-          console.log('ゲーム状態の更新を検出:', gameState);
-          
-          // カウントダウン処理
-          if (gameState.countdown) {
-            handleCountdown(gameState);
-          }
-          
-          // 準備状態の処理
-          if (currentPlayer && !currentPlayer.isMaster) {
-            handleGamePreparation(gameState);
-          }
-          
-          // ゲーム状態に応じて表示を更新
-          updateGameDisplay(gameState);
-        }
-      }, error => {
-        console.error('ゲーム状態の監視エラー:', error);
+
+    // 準備完了ボタンのイベントリスナー
+    if (readyBtn) {
+      readyBtn.addEventListener('click', () => {
+        // 現在の状態を切り替え
+        const newReadyState = !currentPlayer.isReady;
+        updatePlayerReadyState(newReadyState);
       });
     }
 
