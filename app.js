@@ -415,59 +415,101 @@ document.addEventListener('DOMContentLoaded', function() {
   
     // プレイヤーリストを更新する関数
     function updatePlayersList() {
-      playersCollection.get()
-        .then(snapshot => {
-          // リストをクリア
-          connectedPlayersList.innerHTML = '';
-          
-          if (!snapshot.empty) {
-            // プレイヤー一覧を表示
-            snapshot.forEach(doc => {
-              const player = doc.data();
-              const listItem = document.createElement('li');
-              
-              // プレイヤー名とポイント
-              const nameSpan = document.createElement('span');
-              nameSpan.className = 'player-name';
-              nameSpan.textContent = player.name;
-              
-              const pointsSpan = document.createElement('span');
-              pointsSpan.className = 'player-points-list';
-              pointsSpan.textContent = `${player.points || 0}pt`;
-              
-              listItem.appendChild(nameSpan);
-              listItem.appendChild(pointsSpan);
-              
-              // 解答済みのプレイヤーにはステータスを表示
-              if (player.answered) {
-                const statusSpan = document.createElement('span');
-                statusSpan.className = 'player-status';
-                
-                if (player.answerCorrect) {
-                  statusSpan.textContent = '正解';
-                  statusSpan.classList.add('correct');
-                } else {
-                  statusSpan.textContent = '不正解';
-                  statusSpan.classList.add('incorrect');
-                }
-                
-                listItem.appendChild(statusSpan);
-              }
-              
-              connectedPlayersList.appendChild(listItem);
-            });
-          } else {
-            // プレイヤーがいない場合
-            const listItem = document.createElement('li');
-            listItem.textContent = '接続中のプレイヤーはいません';
-            listItem.style.fontStyle = 'italic';
-            listItem.style.color = '#666';
-            connectedPlayersList.appendChild(listItem);
+      const playersList = document.getElementById('players-list');
+      
+      if (!connectedPlayers || playersList.classList.contains('hidden')) {
+        return;
+      }
+      
+      // プレイヤーリストをクリア
+      playersList.innerHTML = '';
+      let totalPlayers = 0;
+      
+      // ポイント順にプレイヤーをソート
+      const sortedPlayers = Object.values(connectedPlayers).sort((a, b) => b.points - a.points);
+      
+      sortedPlayers.forEach(player => {
+        const playerItem = document.createElement('li');
+        playerItem.className = 'player-item';
+        
+        // プレイヤー名とポイントを表示
+        let playerInfo = `${player.name}: ${player.points}点`;
+        
+        // プレイヤーのステータスを決定
+        let statusText = '';
+        let statusClass = '';
+        
+        // ゲーム中の場合
+        if (gameState.status === 'in_progress') {
+          // 正解したプレイヤー
+          if (gameState.correctPlayers && gameState.correctPlayers[player.id]) {
+            statusText = '正解';
+            statusClass = 'correct';
+          } 
+          // 不正解のプレイヤー（回答履歴あり）
+          else if (player.answerHistory && player.answerHistory.length > 0) {
+            const lastAnswer = player.answerHistory[player.answerHistory.length - 1];
+            if (lastAnswer.stageId === gameState.stageId && !lastAnswer.correct) {
+              statusText = '不正解';
+              statusClass = 'incorrect';
+            } else {
+              statusText = '回答待ち';
+            }
+          } 
+          // ロード完了したプレイヤー
+          else if (player.loaded) {
+            statusText = 'ロード完了';
+            statusClass = 'loaded';
           }
-        })
-        .catch(error => {
-          console.error('プレイヤーリスト取得エラー:', error);
-        });
+          // その他のプレイヤー
+          else {
+            statusText = 'ロード中...';
+          }
+        } 
+        // ゲーム準備モードの場合
+        else if (gameState.status === 'preparation') {
+          if (player.ready) {
+            statusText = '準備完了';
+            statusClass = 'ready';
+          } else if (player.loaded) {
+            statusText = 'ロード完了';
+            statusClass = 'loaded';
+          } else {
+            statusText = 'ロード中...';
+          }
+        }
+        // ゲーム開始前の場合
+        else {
+          if (player.loaded) {
+            statusText = 'ロード完了';
+            statusClass = 'loaded';
+          } else {
+            statusText = 'ロード中...';
+          }
+        }
+        
+        // ステータスがある場合に表示
+        if (statusText) {
+          playerInfo += `<span class="player-status ${statusClass}">${statusText}</span>`;
+        }
+        
+        playerItem.innerHTML = playerInfo;
+        playersList.appendChild(playerItem);
+        totalPlayers++;
+      });
+      
+      // プレイヤーがいない場合のメッセージ
+      if (totalPlayers === 0) {
+        const noPlayersItem = document.createElement('li');
+        noPlayersItem.textContent = '接続中のプレイヤーはいません';
+        playersList.appendChild(noPlayersItem);
+      }
+      
+      // 接続中のプレイヤー数を更新
+      const playersCount = document.getElementById('players-count');
+      if (playersCount) {
+        playersCount.textContent = totalPlayers;
+      }
     }
     
     // 解答状況を更新する関数
@@ -1849,6 +1891,18 @@ document.addEventListener('DOMContentLoaded', function() {
           readyMsg.className = 'ready-message';
           readyMsg.textContent = '準備完了！ゲーム開始をお待ちください';
           imageContainer.appendChild(readyMsg);
+        }
+        
+        // ロード完了状態をFirestoreに保存
+        if (currentPlayer && currentPlayer.id) {
+          await readyStateCollection.doc(currentPlayer.id).set({
+            playerId: currentPlayer.id,
+            playerName: currentPlayer.name,
+            isReady: currentPlayer.isReady || false,
+            isLoaded: true,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+            stageId: gameState.stageId
+          }, { merge: true });
         }
         
         return true;

@@ -317,21 +317,33 @@ button:hover {
 }
 
 .player-status {
-    margin-left: 5px;
-    font-size: 11px;
-    padding: 2px 4px;
-    border-radius: 3px;
-    white-space: nowrap;
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-left: 8px;
+    font-size: 0.8em;
+    background-color: #eee;
+    color: #333;
+}
+
+.player-status.ready {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.player-status.loaded {
+    background-color: #2196F3;
+    color: white;
 }
 
 .player-status.correct {
-    background-color: #e8f5e9;
-    color: #4CAF50;
+    background-color: #4CAF50;
+    color: white;
 }
 
 .player-status.incorrect {
-    background-color: #ffebee;
-    color: #f44336;
+    background-color: #F44336;
+    color: white;
 }
 
 /* ゲームコンテンツ */
