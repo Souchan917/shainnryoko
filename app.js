@@ -17,21 +17,27 @@ document.addEventListener('DOMContentLoaded', function() {
         name: 'ステージ1',
         correctAnswer: 'りんご',
         imagePath: 'puzzle.png',
-        pointReward: 10
+        pointReward: 10,
+        hint: 'フルーツの王様とも呼ばれています。赤い色が特徴的です。',
+        hintCost: 5  // ヒントを見るのに必要なポイント
       },
       stage2: {
         id: 'stage2',
         name: 'ステージ2',
         correctAnswer: 'ばなな',
         imagePath: 'puzzle2.png',
-        pointReward: 20
+        pointReward: 20,
+        hint: '黄色い曲がった形が特徴的なフルーツです。猿も大好きです。',
+        hintCost: 7  // ヒントを見るのに必要なポイント
       },
       stage3: {
         id: 'stage3',
         name: 'ステージ3',
         correctAnswer: 'みかん',
         imagePath: 'puzzle3.png',
-        pointReward: 30
+        pointReward: 30,
+        hint: '冬になると食べたくなる、オレンジ色の柑橘系フルーツです。',
+        hintCost: 10  // ヒントを見るのに必要なポイント
       }
     };
     
@@ -86,6 +92,8 @@ document.addEventListener('DOMContentLoaded', function() {
         stageName: selectedStage ? selectedStage.name : null,
         correctAnswer: selectedStage ? selectedStage.correctAnswer : CORRECT_ANSWER,
         pointReward: selectedStage ? selectedStage.pointReward : POINTS_CONFIG.correctAnswer,
+        hint: selectedStage ? selectedStage.hint : null,
+        hintCost: selectedStage ? selectedStage.hintCost : 5,
         imagePath: actualImagePath,
         timestamp: firebase.firestore.FieldValue.serverTimestamp(),
         startTime,
@@ -166,6 +174,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const answerResult = document.getElementById('answer-result');
     const answerTime = document.getElementById('answer-time');
     const playerAnswersList = document.getElementById('player-answers');
+    
+    // ヒント関連の要素
+    const hintSection = document.getElementById('hint-section');
+    const buyHintBtn = document.getElementById('buy-hint-btn');
+    const hintContent = document.getElementById('hint-content');
     
     // ランキング関連の要素
     const resultsRanking = document.getElementById('results-ranking');
@@ -927,6 +940,23 @@ document.addEventListener('DOMContentLoaded', function() {
           if (resultsRanking) {
             resultsRanking.classList.add('hidden');
           }
+          
+          // ヒントコンテンツをリセット
+          if (hintContent) {
+            hintContent.textContent = '';
+            hintContent.classList.add('hidden');
+          }
+          
+          // ヒントボタンをリセット
+          if (buyHintBtn) {
+            buyHintBtn.disabled = false;
+            buyHintBtn.textContent = `ヒントを見る (${gameState.hintCost || 5}pt)`;
+          }
+          
+          // ヒントセクションを表示
+          if (hintSection) {
+            hintSection.classList.remove('hidden');
+          }
         } else {
           console.log('同じステージの更新を検出。解答結果表示を維持します。');
           
@@ -942,6 +972,11 @@ document.addEventListener('DOMContentLoaded', function() {
       } else if (!gameState.gameStarted) {
         gameStartTime = null;
         console.log('ゲーム開始時刻をリセットしました');
+        
+        // ヒントセクションを非表示
+        if (hintSection) {
+          hintSection.classList.add('hidden');
+        }
       }
 
       // 画像を表示
@@ -1223,6 +1258,78 @@ document.addEventListener('DOMContentLoaded', function() {
       // ランキング表示を表示
       resultsRanking.classList.remove('hidden');
     }
+
+    // ヒント購入ボタンのイベントリスナー
+    buyHintBtn.addEventListener('click', async () => {
+      try {
+        // 現在のゲーム状態を取得
+        const gameStateDoc = await gameStateCollection.doc('current').get();
+        if (!gameStateDoc.exists) {
+          console.error('ゲーム状態が見つかりません');
+          return;
+        }
+        
+        const gameState = gameStateDoc.data();
+        
+        // ステージの情報を取得
+        const stageId = gameState.stageId;
+        const hintCost = gameState.hintCost || 5;
+        const hintText = gameState.hint || 'ヒントはありません';
+        
+        // プレイヤーのポイントを確認
+        if (currentPlayer.points < hintCost) {
+          // ポイント不足
+          hintContent.textContent = `ポイントが足りません。ヒントを見るには${hintCost}ポイント必要です。`;
+          hintContent.classList.remove('hidden');
+          return;
+        }
+        
+        // ポイントを消費してヒントを表示
+        currentPlayer.points -= hintCost;
+        
+        // Firestoreのプレイヤー情報を更新
+        await playersCollection.doc(currentPlayer.id).update({
+          points: firebase.firestore.FieldValue.increment(-hintCost),
+          lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
+          usedHint: true,
+          usedHintAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        // ヒントを表示
+        hintContent.textContent = hintText;
+        hintContent.classList.remove('hidden');
+        hintContent.classList.add('show-hint');
+        
+        // ボタンを無効化
+        buyHintBtn.disabled = true;
+        buyHintBtn.textContent = 'ヒント購入済み';
+        
+        // ローカルストレージも更新
+        const savedPlayer = loadFromLocalStorage('currentPlayer') || {};
+        savedPlayer.points = currentPlayer.points;
+        saveToLocalStorage('currentPlayer', savedPlayer);
+        
+        // ポイント表示を更新
+        updatePointsDisplay(currentPlayer.points);
+        
+        // ヒント購入記録をFirestoreに保存
+        await answersCollection.doc(`hint_${currentPlayer.id}_${Date.now()}`).set({
+          playerId: currentPlayer.id,
+          playerName: currentPlayer.name,
+          stageId: stageId,
+          hintCost: hintCost,
+          usedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          isHintPurchase: true
+        });
+        
+        console.log(`プレイヤー ${currentPlayer.name} がヒントを購入しました (${hintCost}pt)`);
+        updateGameStatus(`ヒントを表示しました (-${hintCost}pt)`);
+        
+      } catch (error) {
+        console.error('ヒント購入エラー:', error);
+        updateGameStatus('ヒントの表示に失敗しました');
+      }
+    });
 
   } catch (error) {
     console.error("App initialization error:", error);

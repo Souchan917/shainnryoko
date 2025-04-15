@@ -626,4 +626,58 @@ button:hover {
         font-size: 13px;
         padding: 6px;
     }
+}
+
+/* ヒントセクション */
+#hint-section {
+    margin: 10px 0;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+#hint-section.hidden {
+    display: none;
+}
+
+.hint-button {
+    background-color: #FF9800; /* オレンジ色 */
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    margin: 5px;
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 14px;
+    transition: background-color 0.3s;
+}
+
+.hint-button:hover {
+    background-color: #F57C00; /* 少し濃いオレンジ */
+}
+
+.hint-button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+#hint-content {
+    margin-top: 10px;
+    padding: 10px;
+    background-color: #FFF8E1; /* 薄い黄色背景 */
+    border-radius: 4px;
+    border-left: 3px solid #FFB300; /* オレンジ色のボーダー */
+    color: #5D4037;
+    font-size: 14px;
+    text-align: left;
+    transition: all 0.3s ease;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+#hint-content.hidden {
+    display: none;
+}
+
+#hint-content.show-hint {
+    animation: fadeIn 0.5s;
 } 
