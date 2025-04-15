@@ -309,6 +309,9 @@ document.addEventListener('DOMContentLoaded', function() {
             name: playerName,
             points: currentPlayer.points || POINTS_CONFIG.initial
           });
+          
+          // ポイントのリアルタイムリスナーを開始
+          startPlayerPointsListener();
         })
         .catch(error => {
           console.error('プレイヤー登録/復元エラー:', error);
@@ -317,14 +320,52 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   
     // ポイント表示を更新する関数
-    function updatePointsDisplay(points) {
+    function updatePointsDisplay(points, isAnimation = false) {
       if (playerPointsDisplay) {
-        playerPointsDisplay.textContent = points;
-        
-        // ポイント変動時のアニメーション効果（オプション）
-        playerPointsDisplay.classList.remove('points-updated');
-        void playerPointsDisplay.offsetWidth; // リフロー強制
-        playerPointsDisplay.classList.add('points-updated');
+        if (isAnimation && currentPlayer.oldPoints !== undefined) {
+          // アニメーションでポイントを徐々に増やす
+          const startPoints = currentPlayer.oldPoints;
+          const endPoints = points;
+          const duration = 2000; // 2秒間
+          const startTime = performance.now();
+          
+          // ポイント増加のアニメーション関数
+          function animatePoints(currentTime) {
+            const elapsedTime = currentTime - startTime;
+            const progress = Math.min(elapsedTime / duration, 1);
+            
+            // イージング関数でスムーズに変化させる
+            const easedProgress = 1 - Math.pow(1 - progress, 3); // cubic ease-out
+            
+            // 現在のポイント値を計算
+            const currentPoints = Math.floor(startPoints + (endPoints - startPoints) * easedProgress);
+            playerPointsDisplay.textContent = currentPoints;
+            
+            // アニメーションが完了していなければ続行
+            if (progress < 1) {
+              requestAnimationFrame(animatePoints);
+            } else {
+              // 完了時に最終値を設定
+              playerPointsDisplay.textContent = endPoints;
+              
+              // 完了時のアニメーション効果
+              playerPointsDisplay.classList.remove('points-updated');
+              void playerPointsDisplay.offsetWidth; // リフロー強制
+              playerPointsDisplay.classList.add('points-updated');
+            }
+          }
+          
+          // アニメーション開始
+          requestAnimationFrame(animatePoints);
+        } else {
+          // 通常の更新（アニメーションなし）
+          playerPointsDisplay.textContent = points;
+          
+          // ポイント変動時のアニメーション効果
+          playerPointsDisplay.classList.remove('points-updated');
+          void playerPointsDisplay.offsetWidth; // リフロー強制
+          playerPointsDisplay.classList.add('points-updated');
+        }
       }
     }
   
@@ -1439,8 +1480,112 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     });
 
+    // プレイヤーポイントのリアルタイムリスナー
+    function startPlayerPointsListener() {
+      if (!currentPlayer.id) return;
+      
+      // プレイヤーのドキュメントをリアルタイムで監視
+      return playersCollection.doc(currentPlayer.id)
+        .onSnapshot(doc => {
+          if (doc.exists) {
+            const playerData = doc.data();
+            // 前回のポイントを保存
+            const oldPoints = currentPlayer.points;
+            // ポイントが増加した場合のみアニメーション表示
+            const newPoints = playerData.points;
+            
+            if (newPoints > oldPoints) {
+              // 増加前のポイントを記録
+              currentPlayer.oldPoints = oldPoints;
+              // 新しいポイントを設定
+              currentPlayer.points = newPoints;
+              // アニメーション付きで表示を更新
+              updatePointsDisplay(newPoints, true);
+              
+              // ローカルストレージも更新
+              const savedPlayer = loadFromLocalStorage('currentPlayer') || {};
+              savedPlayer.points = newPoints;
+              saveToLocalStorage('currentPlayer', savedPlayer);
+              
+              console.log(`ポイントが更新されました: ${oldPoints} → ${newPoints}`);
+            } else if (newPoints !== oldPoints) {
+              // ポイントが減少、または変わらない場合は通常更新
+              currentPlayer.points = newPoints;
+              updatePointsDisplay(newPoints);
+              
+              // ローカルストレージも更新
+              const savedPlayer = loadFromLocalStorage('currentPlayer') || {};
+              savedPlayer.points = newPoints;
+              saveToLocalStorage('currentPlayer', savedPlayer);
+            }
+          }
+        }, error => {
+          console.error('プレイヤーポイント監視エラー:', error);
+        });
+    }
+
     // ゲーム状態の監視を開始
     startGameStateListener();
+
+    // ポイント付与ボタンのイベントリスナー
+    const distributePointsBtn = document.getElementById('distribute-points-btn');
+    const pointsToDistribute = document.getElementById('points-to-distribute');
+    
+    distributePointsBtn.addEventListener('click', async () => {
+      try {
+        // 付与するポイント数を取得
+        const pointsAmount = parseInt(pointsToDistribute.value);
+        if (isNaN(pointsAmount) || pointsAmount <= 0) {
+          updateGameStatus('有効なポイント数を入力してください');
+          return;
+        }
+        
+        // 接続中のプレイヤー一覧を取得
+        const playersSnapshot = await playersCollection.get();
+        if (playersSnapshot.empty) {
+          updateGameStatus('付与対象のプレイヤーがいません');
+          return;
+        }
+        
+        // 各プレイヤーにポイントを付与
+        const batch = db.batch();
+        let playerCount = 0;
+        
+        playersSnapshot.forEach(doc => {
+          const playerData = doc.data();
+          // マスターは除外
+          if (playerData.isMaster) return;
+          
+          // ポイント付与のバッチ処理を追加
+          batch.update(playersCollection.doc(doc.id), {
+            points: firebase.firestore.FieldValue.increment(pointsAmount),
+            lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+          });
+          playerCount++;
+        });
+        
+        // バッチ処理を実行
+        if (playerCount > 0) {
+          await batch.commit();
+          console.log(`${playerCount}人のプレイヤーに${pointsAmount}ポイントを付与しました`);
+          updateGameStatus(`全プレイヤーに${pointsAmount}ポイントを付与しました`);
+          
+          // ポイント付与ログをFirestoreに記録
+          await gameStateCollection.doc('pointDistributionLog').set({
+            amount: pointsAmount,
+            playerCount: playerCount,
+            distributedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            distributedBy: 'master'
+          }, { merge: true });
+        } else {
+          updateGameStatus('付与対象のプレイヤーがいません');
+        }
+        
+      } catch (error) {
+        console.error('ポイント付与エラー:', error);
+        updateGameStatus('ポイント付与に失敗しました');
+      }
+    });
 
   } catch (error) {
     console.error("App initialization error:", error);

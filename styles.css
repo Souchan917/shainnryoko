@@ -153,12 +153,16 @@ button:hover {
 /* ポイント更新アニメーション */
 @keyframes points-updated {
     0% { transform: scale(1); }
-    50% { transform: scale(1.3); color: #2E7D32; }
+    20% { transform: scale(1.5); color: #4CAF50; text-shadow: 0 0 10px rgba(76, 175, 80, 0.5); }
+    40% { transform: scale(1.2); color: #2E7D32; }
+    60% { transform: scale(1.3); color: #4CAF50; }
+    80% { transform: scale(1.1); color: #2E7D32; }
     100% { transform: scale(1); }
 }
 
 .points-updated {
-    animation: points-updated 0.5s ease-in-out;
+    animation: points-updated 2s ease-in-out;
+    transition: color 0.5s;
 }
 
 /* マスター画面 */
@@ -173,6 +177,47 @@ button:hover {
 
 .master-controls {
     margin-bottom: 30px;
+}
+
+/* ポイント付与セクション */
+.point-distribution {
+    margin-top: 20px;
+    padding: 15px;
+    background-color: #f0f8ff;
+    border-radius: 8px;
+    border: 1px solid #b0e0e6;
+}
+
+.point-distribution h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-size: 16px;
+    color: #1e88e5;
+}
+
+.point-distribution .form-group {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+}
+
+#points-to-distribute {
+    width: 100px;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    text-align: center;
+    font-size: 14px;
+}
+
+#distribute-points-btn {
+    background-color: #1e88e5;
+    white-space: nowrap;
+}
+
+#distribute-points-btn:hover {
+    background-color: #1976d2;
 }
 
 /* ステージ選択 */
