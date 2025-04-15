@@ -262,6 +262,14 @@ button:hover {
     background-color: #4CAF50;
 }
 
+#start-game.ready-to-start {
+    animation: readyPulse 1.5s infinite;
+    background-color: #2E7D32;
+    font-weight: bold;
+    transform: scale(1.05);
+    box-shadow: 0 0 10px rgba(46, 125, 50, 0.5);
+}
+
 #end-game {
     background-color: #f44336;
 }
@@ -906,5 +914,99 @@ button:hover {
     }
     100% {
         box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+    }
+}
+
+/* 準備ボタン */
+.prepare-button {
+    background-color: #3f51b5;
+    margin-right: 5px;
+}
+
+.prepare-button:hover {
+    background-color: #303f9f;
+}
+
+/* 準備状況表示エリア */
+#preparation-status {
+    margin: 15px auto;
+    padding: 15px;
+    background-color: #f0f7ff;
+    border-radius: 8px;
+    border: 1px solid #cce5ff;
+    max-width: 500px;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+#preparation-status.hidden {
+    display: none;
+}
+
+.loading-indicator {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 10px;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(63, 81, 181, 0.3);
+    border-radius: 50%;
+    border-top-color: #3f51b5;
+    animation: spin 1s ease-in-out infinite;
+    margin-bottom: 10px;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.ready-status {
+    margin-top: 10px;
+    padding: 10px;
+    border-top: 1px solid #cce5ff;
+    transition: all 0.3s ease;
+}
+
+.ready-status.hidden {
+    display: none;
+}
+
+.ready-indicator {
+    display: inline-block;
+    background-color: #4CAF50;
+    color: white;
+    font-weight: bold;
+    padding: 5px 15px;
+    margin-top: 10px;
+    border-radius: 20px;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(76, 175, 80, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(76, 175, 80, 0);
+    }
+}
+
+@keyframes readyPulse {
+    0% {
+        box-shadow: 0 0 5px rgba(46, 125, 50, 0.5);
+    }
+    50% {
+        box-shadow: 0 0 15px rgba(76, 175, 80, 0.8);
+    }
+    100% {
+        box-shadow: 0 0 5px rgba(46, 125, 50, 0.5);
     }
 } 

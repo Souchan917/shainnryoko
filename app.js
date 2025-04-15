@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const gameStateCollection = db.collection('gameState');
     const playersCollection = db.collection('players');
     const answersCollection = db.collection('answers');
+    const readyPlayersCollection = db.collection('readyPlayers'); // 準備完了プレイヤー管理用
     
     // ステージ設定
     const STAGES = {
@@ -80,25 +81,20 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // ゲーム状態オブジェクトの作成
     function createGameState(started, stage = currentStage, imagePath = '', startTime = null) {
-      // ステージが文字列の場合はステージIDとして扱う
-      const selectedStage = typeof stage === 'string' ? STAGES[stage] : stage;
-      
-      // デフォルト画像パスがない場合はステージの画像を使用
-      const actualImagePath = imagePath || (selectedStage ? selectedStage.imagePath : '');
-      
       return {
         gameStarted: started,
-        stageId: selectedStage ? selectedStage.id : null,
-        stageName: selectedStage ? selectedStage.name : null,
-        correctAnswer: selectedStage ? selectedStage.correctAnswer : CORRECT_ANSWER,
-        pointReward: selectedStage ? selectedStage.pointReward : POINTS_CONFIG.correctAnswer,
-        hint: selectedStage ? selectedStage.hint : null,
-        hintCost: selectedStage ? selectedStage.hintCost : 5,
-        imagePath: actualImagePath,
-        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-        startTime,
-        endTime: null,
-        points: POINTS_CONFIG.initial
+        stageId: stage.id,
+        stageName: stage.name,
+        correctAnswer: stage.correctAnswer,
+        imagePath: imagePath || stage.imagePath,
+        pointReward: stage.pointReward,
+        hint: stage.hint,
+        hintCost: stage.hintCost,
+        startTime: startTime,
+        countdown: false,
+        countdownValue: null,
+        preparing: false, // 準備中かどうかのフラグ
+        lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
       };
     }
     
@@ -159,6 +155,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const goToMasterBtn = document.getElementById('go-to-master-btn');
     const displayPlayerName = document.getElementById('display-player-name');
     const playerPointsDisplay = document.getElementById('player-points');
+    const prepareGameBtn = document.getElementById('prepare-game'); // 準備ボタン
     const startGameBtn = document.getElementById('start-game');
     const showResultsBtn = document.getElementById('show-results'); // 結果発表ボタン
     const resetGameBtn = document.getElementById('reset-game');
@@ -166,6 +163,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const statusMessage = document.getElementById('status-message') || document.createElement('div'); // ステータスメッセージ要素がない場合の対策
     const connectedPlayersList = document.getElementById('connected-players');
     const backToRegistrationBtns = document.querySelectorAll('#back-to-registration');
+    
+    // 準備状況表示関連の要素
+    const preparationStatus = document.getElementById('preparation-status');
+    const readyStatus = document.querySelector('.ready-status');
+    const readyPlayersCount = document.getElementById('ready-players-count');
+    const totalPlayersCount = document.getElementById('total-players-count');
     
     // カウントダウン関連の要素
     const countdownOverlay = document.querySelector('.countdown-overlay');
@@ -672,16 +675,15 @@ document.addEventListener('DOMContentLoaded', function() {
               const pointReward = gameState.pointReward || 0;
               currentPlayer.points += pointReward;
               
-              // プレイヤーのポイントを更新
+              // プレイヤー情報更新
               await playersCollection.doc(playerId).update({
-                points: firebase.firestore.FieldValue.increment(pointReward),
-                lastUpdated: endTime,
+                points: currentPlayer.points,
                 answered: true,
                 answerCorrect: true,
-                lastAnswer: answer,
                 lastAnswerTime: answerTimeValue,
-                lastAnsweredAt: firebase.firestore.FieldValue.serverTimestamp(),
-                stageId: gameState.stageId || null
+                lastPointReward: pointReward,
+                lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
+                stageId: gameState.stageId
               });
               
               // 正解者情報をゲーム状態に追加（ゲームは終了しない）
@@ -724,12 +726,30 @@ document.addEventListener('DOMContentLoaded', function() {
               
               updateGameStatus(`${playerName}さんが正解しました！${pointReward}ポイント獲得！`);
             } else {
-              // 不正解の場合の処理
+              // 不正解の場合
+              console.log(`不正解: "${answer}" (正解: "${gameState.correctAnswer}")`);
+              
+              // プレイヤー情報の更新
               await playersCollection.doc(playerId).update({
-                lastAnswer: answer,
+                answered: true,
                 answerCorrect: false,
+                lastAnswer: answer,
+                lastAnswerTime: answerTimeValue,
                 lastAnsweredAt: firebase.firestore.FieldValue.serverTimestamp(),
-                lastAnswerTime: answerTimeValue
+                lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
+                stageId: gameState.stageId
+              });
+              
+              // 回答履歴として保存
+              await answersCollection.doc(`${playerId}_${Date.now()}`).set({
+                playerId: playerId,
+                playerName: playerName,
+                answer: answer,
+                isCorrect: false,
+                stageId: gameState.stageId,
+                stageName: gameState.stageName,
+                answerTime: answerTimeValue,
+                answeredAt: firebase.firestore.FieldValue.serverTimestamp()
               });
               
               // 解答結果を表示
@@ -769,20 +789,25 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('選択されたステージ:', currentStage.name);
         console.log('正解:', CORRECT_ANSWER);
         
+        // ready-to-startクラスを削除
+        startGameBtn.classList.remove('ready-to-start');
+        
         // カウントダウン開始を示すフラグを設定
         const countdownState = {
           countdown: true,
           startTime: firebase.firestore.FieldValue.serverTimestamp(),
-          countdownSeconds: 3 // 5秒から3秒にカウントダウン時間を短縮
+          countdownSeconds: 3, // 3秒カウントダウン
+          preparing: false // 準備中フラグをOFF
         };
         
         // カウントダウンステータスをFirestoreに保存
         await gameStateCollection.doc('current').update({
           countdown: true,
           countdownStartTime: firebase.firestore.FieldValue.serverTimestamp(),
-          countdownSeconds: 3, // 5秒から3秒に変更
+          countdownSeconds: 3,
           selectedStageId: selectedStageId,
-          selectedStageName: currentStage.name
+          selectedStageName: currentStage.name,
+          preparing: false // 準備中フラグをOFF
         });
         
         updateGameStatus(`カウントダウン開始...`);
@@ -1494,6 +1519,28 @@ document.addEventListener('DOMContentLoaded', function() {
             // ポイントが増加した場合のみアニメーション表示
             const newPoints = playerData.points;
             
+            // プレイヤーの状態を同期する（ポイントだけでなく、回答状態なども）
+            currentPlayer.answered = playerData.answered || false;
+            currentPlayer.answerCorrect = playerData.answerCorrect || false;
+            currentPlayer.stageId = playerData.stageId;
+            
+            // 解答欄の状態を同期
+            if (currentPlayer.answerCorrect && playerAnswer && submitAnswerBtn) {
+              playerAnswer.disabled = true;
+              submitAnswerBtn.disabled = true;
+              
+              // 正解メッセージがなければ表示
+              if (answerResult && !answerResult.classList.contains('correct')) {
+                answerResult.textContent = `正解！！ +${playerData.lastPointReward || 0}ポイント獲得`;
+                answerResult.className = 'correct';
+                
+                // 解答時間があれば表示
+                if (playerData.lastAnswerTime !== undefined && answerTime) {
+                  answerTime.textContent = `解答時間: ${playerData.lastAnswerTime.toFixed(2)}秒`;
+                }
+              }
+            }
+            
             if (newPoints > oldPoints) {
               // 増加前のポイントを記録
               currentPlayer.oldPoints = oldPoints;
@@ -1664,6 +1711,211 @@ document.addEventListener('DOMContentLoaded', function() {
       console.log('プレイヤー情報の自動復元を開始しました');
     } else {
       console.log('保存されたプレイヤー情報がないため、登録画面を表示します');
+    }
+
+    // 画像プリロード関数
+    function preloadImage(url) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error(`画像のロードに失敗しました: ${url}`));
+        img.src = url;
+      });
+    }
+
+    // 準備完了状態を更新する関数
+    async function updateReadyState(isReady = true) {
+      if (!currentPlayer.id) return;
+      
+      try {
+        if (isReady) {
+          // 準備完了
+          await readyPlayersCollection.doc(currentPlayer.id).set({
+            playerId: currentPlayer.id,
+            playerName: currentPlayer.name,
+            readyAt: firebase.firestore.FieldValue.serverTimestamp(),
+            stageId: currentPlayer.stageId
+          });
+          console.log('準備完了状態を送信しました:', currentPlayer.name);
+        } else {
+          // 準備解除
+          await readyPlayersCollection.doc(currentPlayer.id).delete();
+          console.log('準備完了状態を解除しました:', currentPlayer.name);
+        }
+      } catch (error) {
+        console.error('準備完了状態の更新に失敗:', error);
+      }
+    }
+
+    // 準備完了状態を表示する関数
+    function updateReadyPlayersUI(readyCount, totalCount) {
+      if (readyPlayersCount && totalPlayersCount) {
+        readyPlayersCount.textContent = readyCount;
+        totalPlayersCount.textContent = totalCount;
+      }
+      
+      if (readyStatus) {
+        readyStatus.classList.remove('hidden');
+      }
+    }
+
+    // ゲーム状態リスナーで準備中状態の監視を追加
+    async function handleGamePreparation(gameState) {
+      if (!gameState) return;
+      
+      // 準備中フラグがONの場合
+      if (gameState.preparing && !currentPlayer.isReady) {
+        console.log('ゲーム準備中、画像をプリロードします:', gameState.imagePath);
+        
+        // 準備状態表示を表示
+        if (preparationStatus) {
+          preparationStatus.classList.remove('hidden');
+        }
+        
+        try {
+          // 画像のプリロード
+          const imagePath = gameState.imagePath;
+          if (imagePath) {
+            await preloadImage(imagePath);
+            console.log('画像のプリロードが完了しました:', imagePath);
+            
+            // 準備完了状態を送信
+            await updateReadyState(true);
+            currentPlayer.isReady = true;
+            
+            // ローカルUIを更新
+            if (readyStatus) {
+              readyStatus.classList.remove('hidden');
+            }
+          }
+        } catch (error) {
+          console.error('画像のプリロードに失敗:', error);
+          // エラーメッセージを表示
+          if (preparationStatus) {
+            const errorMsg = document.createElement('p');
+            errorMsg.textContent = '画像のロードに失敗しました。ネットワーク接続を確認してください。';
+            errorMsg.style.color = 'red';
+            preparationStatus.appendChild(errorMsg);
+          }
+        }
+      } else if (!gameState.preparing && currentPlayer.isReady) {
+        // 準備中フラグがOFFになった場合
+        currentPlayer.isReady = false;
+        
+        // 準備状態表示を非表示
+        if (preparationStatus) {
+          preparationStatus.classList.add('hidden');
+        }
+        
+        // 準備完了状態を解除
+        await updateReadyState(false);
+      }
+    }
+
+    // ゲーム準備ボタンのイベントリスナー
+    prepareGameBtn.addEventListener('click', async () => {
+      try {
+        // 選択されたステージを取得
+        const stageSelector = document.getElementById('stage-selector');
+        const selectedStageId = stageSelector ? stageSelector.value : 'stage1';
+        const selectedStage = STAGES[selectedStageId];
+        
+        if (!selectedStage) {
+          console.error('選択されたステージが見つかりません:', selectedStageId);
+          updateGameStatus('ステージ設定エラー');
+          return;
+        }
+        
+        // 準備中ゲーム状態を作成
+        const gameState = createGameState(false, selectedStage);
+        gameState.preparing = true; // 準備中フラグをON
+        
+        // 準備中状態をFirestoreに保存
+        await gameStateCollection.doc('current').set(gameState);
+        
+        // 準備完了プレイヤー情報をリセット
+        const readyPlayersSnapshot = await readyPlayersCollection.get();
+        const batch = db.batch();
+        readyPlayersSnapshot.forEach(doc => {
+          batch.delete(readyPlayersCollection.doc(doc.id));
+        });
+        await batch.commit();
+        
+        // 準備中ステータスの表示
+        updateGameStatus(`「${selectedStage.name}」の準備を開始しました。プレイヤーの画像ロードを待っています...`);
+        
+        // 準備完了状態の監視を開始
+        startReadyPlayersListener();
+      } catch (error) {
+        console.error('ゲーム準備エラー:', error);
+        updateGameStatus('ゲーム準備に失敗しました');
+      }
+    });
+    
+    // 準備完了プレイヤーの監視
+    function startReadyPlayersListener() {
+      return readyPlayersCollection.onSnapshot(snapshot => {
+        const readyPlayers = [];
+        snapshot.forEach(doc => {
+          readyPlayers.push(doc.data());
+        });
+        
+        // プレイヤー数の取得
+        playersCollection.where('isActive', '==', true).get().then(playersSnapshot => {
+          let totalActivePlayers = 0;
+          playersSnapshot.forEach(doc => {
+            const player = doc.data();
+            if (!player.isMaster) totalActivePlayers++;
+          });
+          
+          // ステータス更新
+          const readyCount = readyPlayers.length;
+          updateGameStatus(`${readyCount}/${totalActivePlayers}人のプレイヤーが準備完了`);
+          
+          // マスターUI側の準備完了表示をアップデート
+          if (readyPlayersCount && totalPlayersCount) {
+            readyPlayersCount.textContent = readyCount;
+            totalPlayersCount.textContent = totalActivePlayers;
+          }
+          
+          // 全員が準備完了したら通知
+          if (readyCount > 0 && readyCount >= totalActivePlayers) {
+            updateGameStatus('全プレイヤーの準備が完了しました！ゲームを開始できます');
+            
+            // スタートボタンを強調表示
+            if (startGameBtn) {
+              startGameBtn.classList.add('ready-to-start');
+            }
+          }
+        });
+      }, error => {
+        console.error('準備完了プレイヤー監視エラー:', error);
+      });
+    }
+    
+    // ゲーム状態の監視を開始
+    function startGameStateListener() {
+      return gameStateCollection.doc('current').onSnapshot(doc => {
+        if (doc.exists) {
+          const gameState = doc.data();
+          console.log('ゲーム状態の更新を検出:', gameState);
+          
+          // カウントダウン処理
+          if (gameState.countdown) {
+            handleCountdown(gameState);
+          }
+          
+          // 準備状態の処理
+          if (currentPlayer && !currentPlayer.isMaster) {
+            handleGamePreparation(gameState);
+          }
+          
+          // ゲーム状態に応じて表示を更新
+          updateGameDisplay(gameState);
+        }
+      }, error => {
+        console.error('ゲーム状態の監視エラー:', error);
+      });
     }
 
   } catch (error) {

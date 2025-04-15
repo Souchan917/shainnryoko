@@ -48,6 +48,18 @@
                     <!-- 画像がここに表示されます -->
                 </div>
                 
+                <!-- 準備状況表示エリア -->
+                <div id="preparation-status" class="hidden">
+                    <div class="loading-indicator">
+                        <div class="spinner"></div>
+                        <p>画像ロード中...</p>
+                    </div>
+                    <div class="ready-status hidden">
+                        <p>準備完了！<span id="ready-players-count">0</span>/<span id="total-players-count">0</span>人が準備完了</p>
+                        <div class="ready-indicator">準備OK</div>
+                    </div>
+                </div>
+                
                 <!-- 解答欄 -->
                 <div id="answer-section" class="hidden">
                     <div class="form-group">
@@ -93,6 +105,7 @@
                 </div>
                 
                 <div class="game-buttons">
+                    <button id="prepare-game" class="prepare-button">ゲーム準備</button>
                     <button id="start-game">ゲームスタート</button>
                     <button id="show-results">結果発表</button>
                     <button id="reset-game">リセット</button>
