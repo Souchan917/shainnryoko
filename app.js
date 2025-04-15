@@ -610,6 +610,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // マスター側：ゲーム開始
     startGameBtn.addEventListener('click', async () => {
       try {
+        console.log("Starting game...");
+        updateGameStatus("ゲーム開始中...");
+        
         const stageSelector = document.getElementById('stage-selector');
         const selectedStageId = stageSelector ? stageSelector.value : 'stage1';
         
@@ -620,6 +623,14 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('選択されたステージ:', currentStage.name);
         console.log('正解:', CORRECT_ANSWER);
         
+        // 解答コレクションをクリア
+        await deleteAllAnswers();
+        console.log('すべての解答をクリアしました');
+        
+        // 全プレイヤーの解答状態をリセット
+        await resetAllPlayerAnswers();
+        console.log('全プレイヤーの解答状態をリセットしました');
+        
         // ゲーム状態を更新
         const gameState = createGameState(
           true, 
@@ -628,13 +639,23 @@ document.addEventListener('DOMContentLoaded', function() {
           firebase.firestore.FieldValue.serverTimestamp()
         );
         
-        await gameStateCollection.doc('current').set(gameState);
+        // ローカルストレージにも状態を保存（フォールバック用）
+        saveToLocalStorage('gameState', {
+          ...gameState,
+          timestamp: Date.now()
+        });
         
-        updateGameStatus('ゲームを開始しました！');
-        updateGameDisplay(gameState);
+        // Firestoreにゲーム状態を保存
+        await gameStateCollection.doc('current').set(gameState);
+        console.log("Game state updated successfully");
+        
+        updateGameStatus(`ゲームが開始されました！ステージ: ${currentStage.name}`);
+        
+        // 解答リストを更新
+        updateAnswersList();
       } catch (error) {
         console.error('ゲームの開始に失敗しました:', error);
-        updateGameStatus('ゲームの開始に失敗しました。再度お試しください。');
+        updateGameStatus('ゲームの開始に失敗しました: ' + error.message);
       }
     });
     
@@ -764,24 +785,62 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // ゲーム表示の更新関数
     function updateGameDisplay(gameState) {
-      const gameContainer = document.getElementById('game-container');
-      const puzzleImage = document.getElementById('puzzle-image');
-      const stageNameDisplay = document.getElementById('stage-name');
-      
-      if (gameContainer && gameState) {
-        if (gameState.gameStarted) {
-          gameContainer.classList.remove('hidden');
+      if (!gameState) return;
+
+      // ゲーム開始時刻を設定（解答時間計算用）
+      if (gameState.gameStarted && gameState.startTime) {
+        if (typeof gameState.startTime === 'object' && gameState.startTime.toDate) {
+          // Firestoreのタイムスタンプオブジェクトの場合
+          gameStartTime = gameState.startTime.toDate().getTime();
+        } else if (typeof gameState.startTime === 'string') {
+          // ISOString形式の場合
+          gameStartTime = new Date(gameState.startTime).getTime();
+        } else {
+          // その他の形式またはミリ秒タイムスタンプの場合
+          gameStartTime = gameState.startTime;
+        }
+        console.log('ゲーム開始時刻を設定:', gameStartTime);
+      } else if (!gameState.gameStarted) {
+        gameStartTime = null;
+        console.log('ゲーム開始時刻をリセットしました');
+      }
+
+      // 画像を表示
+      const imageContainer = document.getElementById('image-container');
+      if (imageContainer && gameState) {
+        if (gameState.gameStarted && gameState.imagePath) {
+          // 画像を表示
+          imageContainer.innerHTML = `<img id="puzzle-image" src="${gameState.imagePath}" alt="${gameState.stageName || 'ゲーム画像'}" style="max-width: 100%; height: auto; border-radius: 8px;">`;
           
-          if (puzzleImage && gameState.imagePath) {
-            puzzleImage.src = gameState.imagePath;
-            puzzleImage.alt = `${gameState.stageName}のパズル画像`;
+          // ゲーム中のメッセージ
+          const gameContentP = document.querySelector('#game-content > p');
+          if (gameContentP) {
+            gameContentP.textContent = `ゲームが開始されました！ステージ: ${gameState.stageName || ''}`;
+            gameContentP.classList.add('game-started');
           }
           
-          if (stageNameDisplay && gameState.stageName) {
-            stageNameDisplay.textContent = gameState.stageName;
+          // 解答欄を表示
+          if (answerSection) {
+            answerSection.classList.remove('hidden');
           }
         } else {
-          gameContainer.classList.add('hidden');
+          // ゲームが開始されていない場合
+          imageContainer.innerHTML = '';
+          
+          // 待機中のメッセージ
+          const gameContentP = document.querySelector('#game-content > p');
+          if (gameContentP) {
+            gameContentP.textContent = 'マスターがゲームを開始するのを待っています...';
+            gameContentP.classList.remove('game-started');
+          }
+          
+          // 解答欄を非表示
+          if (answerSection) {
+            answerSection.classList.add('hidden');
+          }
+          
+          // 解答関連の状態をリセット
+          resetAnswerInput();
         }
       }
     }
@@ -864,180 +923,12 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 });
 
-// ゲーム開始関数
-function startGame(selectedStageId) {
-  if (!selectedStageId || !STAGES[selectedStageId]) {
-    console.error('無効なステージID:', selectedStageId);
-    return;
+// ステータスメッセージを更新する関数を追加
+function updateGameStatus(message) {
+  if (statusMessage) {
+    statusMessage.textContent = message;
   }
-
-  const stage = STAGES[selectedStageId];
-  currentStage = stage;
-  CORRECT_ANSWER = stage.correctAnswer;
-
-  // ゲーム状態を作成して保存
-  const newGameState = createGameState(true, stage, stage.imagePath, new Date().toISOString());
-  
-  // Firestoreにゲーム状態を保存
-  gameStateCollection.doc('current').set(newGameState)
-    .then(() => {
-      console.log('ゲームが開始されました。ステージ:', stage.name);
-      
-      // マスター画面の場合、UIを更新
-      if (isMasterScreen) {
-        document.getElementById('end-game').removeAttribute('disabled');
-        document.getElementById('start-game').setAttribute('disabled', 'true');
-        
-        // ステータスメッセージを更新
-        const statusMessage = document.getElementById('status-message');
-        if (statusMessage) {
-          statusMessage.textContent = `${stage.name}が開始されました。正解: ${stage.correctAnswer}`;
-        }
-      }
-    })
-    .catch(error => {
-      console.error('ゲーム開始時のデータ保存エラー:', error);
-    });
 }
-
-// ゲーム終了関数
-function endGame() {
-  if (!currentStage) {
-    console.error('現在のステージが設定されていません。');
-    return;
-  }
-  
-  // 現在の時刻をエンドタイムとして設定
-  const endTime = new Date().toISOString();
-  
-  // 既存のゲームステートを取得して更新
-  gameStateCollection.doc('current').get()
-    .then(doc => {
-      if (doc.exists) {
-        const currentState = doc.data();
-        
-        // 終了状態を設定
-        currentState.gameStarted = false;
-        currentState.endTime = endTime;
-        
-        // Firestoreに更新したゲーム状態を保存
-        return gameStateCollection.doc('current').update(currentState);
-      } else {
-        console.error('現在のゲーム状態が見つかりません。');
-        return null;
-      }
-    })
-    .then(() => {
-      if (isMasterScreen) {
-        console.log('ゲームが終了しました。ステージ:', currentStage.name);
-        
-        // マスター画面のUI更新
-        document.getElementById('end-game').setAttribute('disabled', 'true');
-        document.getElementById('start-game').removeAttribute('disabled');
-        
-        // ステータスメッセージを更新
-        const statusMessage = document.getElementById('status-message');
-        if (statusMessage) {
-          statusMessage.textContent = `${currentStage.name}が終了しました。`;
-        }
-      }
-    })
-    .catch(error => {
-      console.error('ゲーム終了時のデータ更新エラー:', error);
-    });
-}
-
-// ゲームリセット関数
-function resetGame() {
-  // 初期状態のゲーム状態を作成
-  const initialState = createGameState(false);
-  
-  // Firestoreにリセットされたゲーム状態を保存
-  gameStateCollection.doc('current').set(initialState)
-    .then(() => {
-      console.log('ゲームがリセットされました。');
-      
-      // プレイヤー情報もリセット
-      if (currentPlayer) {
-        // プレイヤーの回答状態をリセット
-        if (currentPlayer.id) {
-          playersCollection.doc(currentPlayer.id).update({
-            hasAnswered: false,
-            isCorrect: false,
-            answer: ''
-          }).catch(e => console.error('プレイヤー情報リセットエラー:', e));
-        }
-        
-        // 現在のプレイヤーオブジェクトを更新
-        currentPlayer.hasAnswered = false;
-        currentPlayer.isCorrect = false;
-        currentPlayer.answer = '';
-        saveToLocalStorage('currentPlayer', currentPlayer);
-      }
-      
-      // マスター画面のUI更新
-      if (isMasterScreen) {
-        document.getElementById('end-game').setAttribute('disabled', 'true');
-        document.getElementById('start-game').removeAttribute('disabled');
-        
-        // ステータスメッセージを更新
-        const statusMessage = document.getElementById('status-message');
-        if (statusMessage) {
-          statusMessage.textContent = 'ゲームがリセットされました。新しいステージを選択してください。';
-        }
-      }
-    })
-    .catch(error => {
-      console.error('ゲームリセット時のデータ保存エラー:', error);
-    });
-}
-
-// ドキュメントが読み込まれた後の初期化
-document.addEventListener('DOMContentLoaded', function() {
-  // マスター画面特有の初期化
-  if (isMasterScreen) {
-    // ステージ選択リスナーの設定
-    const stageSelector = document.getElementById('stage-selector');
-    if (stageSelector) {
-      stageSelector.addEventListener('change', function() {
-        const selectedStageId = this.value;
-        console.log('ステージが選択されました:', STAGES[selectedStageId].name);
-      });
-    }
-    
-    // ゲーム開始ボタンのリスナー設定
-    const startButton = document.getElementById('start-game');
-    if (startButton) {
-      startButton.addEventListener('click', function() {
-        const stageSelector = document.getElementById('stage-selector');
-        const selectedStageId = stageSelector.value;
-        startGame(selectedStageId);
-      });
-    }
-    
-    // ゲーム終了ボタンのリスナー設定
-    const endButton = document.getElementById('end-game');
-    if (endButton) {
-      endButton.addEventListener('click', function() {
-        endGame();
-      });
-    }
-    
-    // ゲームリセットボタンのリスナー設定
-    const resetButton = document.getElementById('reset-game');
-    if (resetButton) {
-      resetButton.addEventListener('click', function() {
-        resetGame();
-      });
-    }
-  }
-  
-  // プレイヤー情報の復元
-  // ... 既存コード ...
-  
-  // ゲーム状態の監視を開始
-  startGameStateListener();
-});
 
 // 回答送信処理
 function submitAnswer(playerId, playerName, answer) {
