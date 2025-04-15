@@ -455,6 +455,14 @@ button:hover {
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
+#hint-content.hidden {
+    display: none;
+}
+
+#hint-content.show-hint {
+    animation: fadeIn 0.5s;
+}
+
 /* 解答欄のスタイル */
 #answer-section {
     margin-top: 10px;
