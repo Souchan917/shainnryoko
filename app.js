@@ -1372,6 +1372,13 @@ document.addEventListener('DOMContentLoaded', function() {
         
         const gameState = gameStateDoc.data();
         
+        // プレイヤーが既に正解済みの場合はヒント購入不可
+        if (currentPlayer.answerCorrect) {
+          hintContent.textContent = `既に正解しているので、ヒントは必要ありません。`;
+          hintContent.classList.remove('hidden');
+          return;
+        }
+        
         // ステージの情報を取得
         const stageId = gameState.stageId;
         const hintCost = gameState.hintCost || 5;
