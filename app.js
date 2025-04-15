@@ -167,6 +167,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const connectedPlayersList = document.getElementById('connected-players');
     const backToRegistrationBtns = document.querySelectorAll('#back-to-registration');
     
+    // カウントダウン関連の要素
+    const countdownOverlay = document.querySelector('.countdown-overlay');
+    const countdownNumber = document.querySelector('.countdown-number');
+    
     // 解答関連の要素
     const answerSection = document.getElementById('answer-section');
     const playerAnswer = document.getElementById('answer-input');
@@ -724,36 +728,58 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('選択されたステージ:', currentStage.name);
         console.log('正解:', CORRECT_ANSWER);
         
-        // 解答コレクションをクリア
-        await deleteAllAnswers();
-        console.log('すべての解答をクリアしました');
+        // カウントダウン開始を示すフラグを設定
+        const countdownState = {
+          countdown: true,
+          startTime: firebase.firestore.FieldValue.serverTimestamp(),
+          countdownSeconds: 3 // 5秒から3秒にカウントダウン時間を短縮
+        };
         
-        // 全プレイヤーの解答状態をリセット
-        await resetAllPlayerAnswers();
-        console.log('全プレイヤーの解答状態をリセットしました');
-        
-        // ゲーム状態を更新
-        const gameState = createGameState(
-          true, 
-          currentStage, 
-          currentStage.imagePath, 
-          firebase.firestore.FieldValue.serverTimestamp()
-        );
-        
-        // ローカルストレージにも状態を保存（フォールバック用）
-        saveToLocalStorage('gameState', {
-          ...gameState,
-          timestamp: Date.now()
+        // カウントダウンステータスをFirestoreに保存
+        await gameStateCollection.doc('current').update({
+          countdown: true,
+          countdownStartTime: firebase.firestore.FieldValue.serverTimestamp(),
+          countdownSeconds: 3, // 5秒から3秒に変更
+          selectedStageId: selectedStageId,
+          selectedStageName: currentStage.name
         });
         
-        // Firestoreにゲーム状態を保存
-        await gameStateCollection.doc('current').set(gameState);
-        console.log("Game state updated successfully");
+        updateGameStatus(`カウントダウン開始...`);
         
-        updateGameStatus(`ゲームが開始されました！ステージ: ${currentStage.name}`);
+        // カウントダウン終了後（4秒後）に本当のゲーム開始処理を実行
+        setTimeout(async () => {
+          // 解答コレクションをクリア
+          await deleteAllAnswers();
+          console.log('すべての解答をクリアしました');
+          
+          // 全プレイヤーの解答状態をリセット
+          await resetAllPlayerAnswers();
+          console.log('全プレイヤーの解答状態をリセットしました');
+          
+          // ゲーム状態を更新
+          const gameState = createGameState(
+            true, 
+            currentStage, 
+            currentStage.imagePath, 
+            firebase.firestore.FieldValue.serverTimestamp()
+          );
+          
+          // ローカルストレージにも状態を保存（フォールバック用）
+          saveToLocalStorage('gameState', {
+            ...gameState,
+            timestamp: Date.now()
+          });
+          
+          // Firestoreにゲーム状態を保存
+          await gameStateCollection.doc('current').set(gameState);
+          console.log("Game state updated successfully");
+          
+          updateGameStatus(`ゲームが開始されました！ステージ: ${currentStage.name}`);
+          
+          // 解答リストを更新
+          updateAnswersList();
+        }, 4000); // カウントダウン3秒 + 演出のためのバッファ1秒
         
-        // 解答リストを更新
-        updateAnswersList();
       } catch (error) {
         console.error('ゲームの開始に失敗しました:', error);
         updateGameStatus('ゲームの開始に失敗しました: ' + error.message);
@@ -862,7 +888,14 @@ document.addEventListener('DOMContentLoaded', function() {
           
           if (doc.exists) {
             const gameState = doc.data();
-            updateGameDisplay(gameState);
+            
+            // カウントダウン状態の処理
+            if (gameState.countdown === true) {
+              handleCountdown(gameState);
+            } else {
+              // 通常のゲーム状態更新
+              updateGameDisplay(gameState);
+            }
           } else {
             console.log("データベースにゲーム状態がありません");
             // 初期状態を設定
@@ -881,8 +914,76 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // ゲーム状態の監視を開始
-    startGameStateListener();
+    // カウントダウン処理を行う関数
+    function handleCountdown(gameState) {
+      if (!countdownOverlay || !countdownNumber) return;
+      
+      console.log("カウントダウン状態を検出しました");
+      const seconds = gameState.countdownSeconds || 3; // デフォルトを3秒に変更
+      
+      // カウントダウンオーバーレイを表示
+      countdownOverlay.classList.add('active');
+      
+      // カウントダウン処理
+      let count = seconds;
+      countdownNumber.textContent = count;
+      
+      // 以前のタイマーがあればクリア
+      if (window.countdownTimer) {
+        clearInterval(window.countdownTimer);
+      }
+      
+      // カウントダウンを開始
+      countdownOverlay.classList.add('counting');
+      
+      // 現在のカウント数をdata属性に設定（スタイル切り替え用）
+      countdownOverlay.setAttribute('data-count', count);
+      
+      const countdownTimer = setInterval(() => {
+        count--;
+        
+        // カウントダウン更新
+        if (count > 0) {
+          // 数字を更新してアニメーションをリセット
+          countdownNumber.textContent = count;
+          countdownOverlay.classList.remove('counting');
+          
+          // 現在のカウント数をdata属性に設定（スタイル切り替え用）
+          countdownOverlay.setAttribute('data-count', count);
+          
+          void countdownOverlay.offsetWidth; // リフロー強制
+          countdownOverlay.classList.add('counting');
+          
+          // カウントダウン効果音を再生（オプション）
+          // new Audio('countdown-beep.mp3').play().catch(e => console.log('効果音再生エラー:', e));
+        } else if (count === 0) {
+          // GOの表示
+          countdownNumber.textContent = "GO!";
+          countdownOverlay.classList.remove('counting');
+          countdownOverlay.classList.add('final');
+          
+          // GO効果音を再生（オプション）
+          // new Audio('countdown-go.mp3').play().catch(e => console.log('効果音再生エラー:', e));
+        } else {
+          // カウントダウン終了
+          clearInterval(countdownTimer);
+          
+          // オーバーレイを非表示
+          countdownOverlay.classList.remove('counting', 'final');
+          countdownOverlay.classList.add('complete');
+          
+          // 少し待ってから完全に非表示
+          setTimeout(() => {
+            countdownOverlay.classList.remove('active', 'complete');
+            // data-count属性をリセット
+            countdownOverlay.removeAttribute('data-count');
+          }, 800); // アニメーション時間に合わせて調整
+        }
+      }, 1000);
+      
+      // タイマー参照を保存
+      window.countdownTimer = countdownTimer;
+    }
     
     // ゲーム表示の更新関数
     function updateGameDisplay(gameState) {
@@ -1330,6 +1431,9 @@ document.addEventListener('DOMContentLoaded', function() {
         updateGameStatus('ヒントの表示に失敗しました');
       }
     });
+
+    // ゲーム状態の監視を開始
+    startGameStateListener();
 
   } catch (error) {
     console.error("App initialization error:", error);
