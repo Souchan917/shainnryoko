@@ -917,85 +917,92 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     });
     
+    // ステータスメッセージを更新する関数（内部で使用できるように追加）
+    function updateGameStatus(message) {
+      if (statusMessage) {
+        statusMessage.textContent = message;
+        console.log("ステータスメッセージを更新:", message);
+      }
+    }
+    
+    // 回答送信処理（内部関数として再定義）
+    function submitAnswer(playerId, playerName, answer) {
+      if (!playerId || !playerName || !answer) {
+        console.error('submitAnswer: 引数が不足しています', {playerId, playerName, answer});
+        return;
+      }
+      
+      // 現在のゲーム状態を取得
+      gameStateCollection.doc('current').get().then(async (doc) => {
+        if (doc.exists) {
+          const gameState = doc.data();
+          
+          // ゲームが開始されている場合のみ処理
+          if (gameState.gameStarted) {
+            // 正解かどうかを確認（ステージの正解に基づいて判定）
+            const isCorrect = answer === gameState.correctAnswer;
+            
+            if (isCorrect) {
+              // 正解の場合の処理
+              const endTime = firebase.firestore.FieldValue.serverTimestamp();
+              
+              // プレイヤーのポイントを更新
+              await playersCollection.doc(playerId).update({
+                points: firebase.firestore.FieldValue.increment(gameState.pointReward),
+                lastUpdated: endTime,
+                answerCorrect: true,
+                lastAnswer: answer
+              });
+              
+              // ゲーム状態を更新（ゲーム終了）
+              await gameStateCollection.doc('current').update({
+                gameStarted: false,
+                endTime: endTime,
+                winner: {
+                  id: playerId,
+                  name: playerName
+                }
+              });
+              
+              updateGameStatus(`${playerName}さんが正解しました！${gameState.pointReward}ポイント獲得！`);
+            } else {
+              // 不正解の場合の処理
+              await playersCollection.doc(playerId).update({
+                lastAnswer: answer,
+                answerCorrect: false,
+                lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+              });
+              updateGameStatus(`${playerName}さんの回答「${answer}」は不正解です。`);
+            }
+          } else {
+            updateGameStatus('ゲームはまだ開始されていません。');
+          }
+        }
+      }).catch((error) => {
+        console.error('回答の処理中にエラーが発生しました:', error);
+        updateGameStatus('回答の処理中にエラーが発生しました。');
+      });
+    }
+
+    // プレイヤー側の回答ボタンイベントリスナー
+    if (submitAnswerBtn) {
+      submitAnswerBtn.addEventListener('click', () => {
+        const answerInput = document.getElementById('answer-input');
+        if (answerInput && currentPlayer.id) {
+          const answer = answerInput.value.trim();
+          if (answer) {
+            // 元の関数と名前の衝突を避けるため、この関数名を変更します
+            submitPlayerAnswer(currentPlayer.id, currentPlayer.name, answer);
+            answerInput.value = '';
+          } else {
+            updateGameStatus('回答を入力してください。');
+          }
+        }
+      });
+    }
+    
   } catch (error) {
     console.error("App initialization error:", error);
     alert("アプリケーションエラー: " + error.message);
   }
-});
-
-// ステータスメッセージを更新する関数を追加
-function updateGameStatus(message) {
-  if (statusMessage) {
-    statusMessage.textContent = message;
-  }
-}
-
-// 回答送信処理
-function submitAnswer(playerId, playerName, answer) {
-  // 現在のゲーム状態を取得
-  gameStateCollection.doc('current').get().then(async (doc) => {
-    if (doc.exists) {
-      const gameState = doc.data();
-      
-      // ゲームが開始されている場合のみ処理
-      if (gameState.gameStarted) {
-        // 正解かどうかを確認（ステージの正解に基づいて判定）
-        const isCorrect = answer === gameState.correctAnswer;
-        
-        if (isCorrect) {
-          // 正解の場合の処理
-          const endTime = firebase.firestore.FieldValue.serverTimestamp();
-          
-          // プレイヤーのポイントを更新
-          await playersCollection.doc(playerId).update({
-            points: firebase.firestore.FieldValue.increment(gameState.pointReward),
-            lastUpdated: endTime,
-            answerCorrect: true,
-            lastAnswer: answer
-          });
-          
-          // ゲーム状態を更新（ゲーム終了）
-          await gameStateCollection.doc('current').update({
-            gameStarted: false,
-            endTime: endTime,
-            winner: {
-              id: playerId,
-              name: playerName
-            }
-          });
-          
-          updateGameStatus(`${playerName}さんが正解しました！${gameState.pointReward}ポイント獲得！`);
-        } else {
-          // 不正解の場合の処理
-          await playersCollection.doc(playerId).update({
-            lastAnswer: answer,
-            answerCorrect: false,
-            lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
-          });
-          updateGameStatus(`${playerName}さんの回答「${answer}」は不正解です。`);
-        }
-      } else {
-        updateGameStatus('ゲームはまだ開始されていません。');
-      }
-    }
-  }).catch((error) => {
-    console.error('回答の処理中にエラーが発生しました:', error);
-    updateGameStatus('回答の処理中にエラーが発生しました。');
-  });
-}
-
-// プレイヤー側の回答ボタンイベントリスナー
-if (submitAnswerBtn) {
-  submitAnswerBtn.addEventListener('click', () => {
-    const answerInput = document.getElementById('answer-input');
-    if (answerInput && currentPlayer.id) {
-      const answer = answerInput.value.trim();
-      if (answer) {
-        submitAnswer(currentPlayer.id, currentPlayer.name, answer);
-        answerInput.value = '';
-      } else {
-        updateGameStatus('回答を入力してください。');
-      }
-    }
-  });
-} 
+}); 
