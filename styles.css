@@ -317,33 +317,21 @@ button:hover {
 }
 
 .player-status {
-    display: inline-block;
-    padding: 2px 6px;
-    border-radius: 4px;
-    margin-left: 8px;
-    font-size: 0.8em;
-    background-color: #eee;
-    color: #333;
-}
-
-.player-status.ready {
-    background-color: #4CAF50;
-    color: white;
-}
-
-.player-status.loaded {
-    background-color: #2196F3;
-    color: white;
+    margin-left: 5px;
+    font-size: 11px;
+    padding: 2px 4px;
+    border-radius: 3px;
+    white-space: nowrap;
 }
 
 .player-status.correct {
-    background-color: #4CAF50;
-    color: white;
+    background-color: #e8f5e9;
+    color: #4CAF50;
 }
 
 .player-status.incorrect {
-    background-color: #F44336;
-    color: white;
+    background-color: #ffebee;
+    color: #f44336;
 }
 
 /* ゲームコンテンツ */
@@ -921,134 +909,89 @@ button:hover {
     }
 }
 
-/* 準備状態セクション */
-#preparation-section {
-    margin: 15px 0;
-    padding: 15px;
-    background-color: #f5f5f5;
-    border-radius: 8px;
-    transition: all 0.3s ease;
-    text-align: center;
-}
-
-#preparation-section.hidden {
-    display: none;
-}
-
-.preparation-status {
-    margin-bottom: 15px;
-}
-
-.preparation-status p {
-    margin: 8px 0;
-    font-weight: bold;
-    color: #333;
-}
-
-/* プログレスバー */
-.progress-bar {
-    width: 100%;
-    height: 15px;
-    background-color: #e0e0e0;
-    border-radius: 10px;
+/* プリロードコンテナ */
+#preload-container {
+    position: absolute;
+    width: 0;
+    height: 0;
     overflow: hidden;
-    margin: 10px 0;
+    opacity: 0;
+    visibility: hidden;
+    z-index: -9999;
 }
 
-.progress {
-    height: 100%;
-    background: linear-gradient(90deg, #4CAF50, #8BC34A);
-    width: 0%;
-    transition: width 0.3s ease;
-    border-radius: 10px;
-}
-
-/* 準備ボタン */
-.ready-button {
-    background-color: #4CAF50;
-    color: white;
-    border: none;
-    padding: 10px 20px;
-    margin: 5px;
-    cursor: pointer;
-    border-radius: 4px;
-    font-size: 14px;
-    transition: all 0.3s;
-    font-weight: bold;
-}
-
-.ready-button:disabled {
-    background-color: #cccccc;
-    cursor: not-allowed;
-    opacity: 0.7;
-}
-
-.ready-button.ready {
-    background-color: #2196F3;
-}
-
-.ready-button:hover:not(:disabled) {
-    background-color: #45a049;
-    transform: translateY(-2px);
-    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-}
-
-.ready-button.ready:hover:not(:disabled) {
-    background-color: #0b7dda;
-}
-
-/* マスター画面の準備ボタン */
-.prepare-button {
-    background-color: #FF9800;
-}
-
-.prepare-button:hover {
-    background-color: #F57C00;
-}
-
-.prepare-button.preparing {
-    background-color: #FFC107;
-    animation: pulse 1.5s infinite;
-}
-
-/* 準備完了プレイヤー表示 */
-.player-status.ready {
-    background-color: #e3f2fd;
-    color: #2196F3;
-}
-
-/* 準備中インジケーター */
-@keyframes pulse-preparing {
-    0% { opacity: 0.7; }
-    50% { opacity: 1; }
-    100% { opacity: 0.7; }
-}
-
-#image-container.preparing {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 200px;
-    background-color: #f0f8ff;
-    border: 1px dashed #b0e0e6;
-    animation: pulse-preparing 1.5s infinite;
-}
-
-.preparing-message, .ready-message {
-    font-size: 18px;
-    font-weight: bold;
-    color: #455a64;
-    padding: 20px;
+/* 画像ロード表示用スタイル */
+.loading-container {
+    margin: 15px auto;
+    max-width: 80%;
     text-align: center;
+    padding: 10px;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    display: none; /* 初期状態では非表示 */
 }
 
-.ready-message {
-    color: #2196F3;
-    animation: pulse-ready 2s infinite;
+.loading-container.show {
+    display: block;
+    animation: fadeIn 0.3s;
 }
 
-@keyframes pulse-ready {
-    0% { transform: scale(1); opacity: 0.9; }
-    50% { transform: scale(1.05); opacity: 1; }
-    100% { transform: scale(1); opacity: 0.9; }
+.loading-text {
+    margin-bottom: 8px;
+    font-size: 14px;
+    color: #666;
+    font-weight: bold;
+}
+
+.loading-bar {
+    height: 10px;
+    background-color: #e0e0e0;
+    border-radius: 5px;
+    overflow: hidden;
+    position: relative;
+}
+
+.loading-progress {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #4CAF50 0%, #8BC34A 100%);
+    border-radius: 5px;
+    transition: width 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+/* ローディングバーのアニメーション */
+.loading-progress::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0) 0%,
+        rgba(255, 255, 255, 0.4) 50%,
+        rgba(255, 255, 255, 0) 100%
+    );
+    animation: loadingShimmer 1.5s infinite;
+}
+
+.load-complete .loading-progress {
+    background: linear-gradient(90deg, #4CAF50 0%, #43A047 100%);
+}
+
+.load-complete .loading-text {
+    color: #4CAF50;
+}
+
+@keyframes loadingShimmer {
+    0% {
+        transform: translateX(-100%);
+    }
+    100% {
+        transform: translateX(100%);
+    }
 } 

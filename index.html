@@ -44,20 +44,14 @@
                 <p>ポイント: <span id="player-points">0</span>pt</p>
             </div>
             <div id="game-content">
+                <div id="loading-container" class="loading-container">
+                    <div class="loading-text">画像ロード中...</div>
+                    <div class="loading-bar">
+                        <div class="loading-progress" id="loading-progress"></div>
+                    </div>
+                </div>
                 <div id="image-container">
                     <!-- 画像がここに表示されます -->
-                </div>
-                
-                <!-- 準備状態表示 -->
-                <div id="preparation-section" class="hidden">
-                    <div class="preparation-status">
-                        <p>ゲームの準備中です...</p>
-                        <div class="progress-bar">
-                            <div class="progress"></div>
-                        </div>
-                        <p id="load-status">画像をロード中（0%）</p>
-                    </div>
-                    <button id="ready-btn" class="ready-button" disabled>準備完了</button>
                 </div>
                 
                 <!-- 解答欄 -->
@@ -105,8 +99,8 @@
                 </div>
                 
                 <div class="game-buttons">
+                    <button id="prepare-game">ゲーム準備</button>
                     <button id="start-game">ゲームスタート</button>
-                    <button id="prepare-game" class="prepare-button">ゲーム準備</button>
                     <button id="show-results">結果発表</button>
                     <button id="reset-game">リセット</button>
                 </div>
