@@ -16,7 +16,7 @@ body {
     width: 100%;
     max-width: 800px;
     margin: 0 auto;
-    padding: 10px;
+    padding: 5px 10px 10px;
 }
 
 h1 {
@@ -126,22 +126,22 @@ button:hover {
 #player-panel {
     background: white;
     border-radius: 8px;
-    padding: 20px;
+    padding: 15px 20px 20px;
     box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    margin-top: 20px;
+    margin-top: 10px;
     text-align: center;
 }
 
 .player-info {
     background-color: #e8f5e9;
-    padding: 10px;
+    padding: 8px 10px;
     border-radius: 4px;
-    margin-bottom: 20px;
+    margin-bottom: 15px;
     font-weight: bold;
 }
 
 .player-info p {
-    margin: 5px 0;
+    margin: 3px 0;
 }
 
 #player-points {
@@ -336,18 +336,18 @@ button:hover {
 
 /* ゲームコンテンツ */
 #game-content {
-    margin-top: 20px;
+    margin-top: 10px;
 }
 
 #game-content p {
     font-size: 14px;
-    margin-bottom: 15px;
+    margin-bottom: 10px;
     padding: 8px;
     border-radius: 4px;
 }
 
 #image-container {
-    margin: 20px auto;
+    margin: 10px auto;
     text-align: center;
     max-width: 500px;
     min-height: 100px;

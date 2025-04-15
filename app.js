@@ -1587,6 +1587,85 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     });
 
+    // ページ読み込み時に自動的にプレイヤー情報を復元
+    function autoRestorePlayerSession() {
+      // ローカルストレージからプレイヤー情報を取得
+      const savedPlayer = loadFromLocalStorage('currentPlayer');
+      
+      if (savedPlayer && savedPlayer.id && savedPlayer.name) {
+        console.log('保存されたプレイヤー情報を復元:', savedPlayer.name);
+        
+        // Firestoreからプレイヤー情報を確認・復元
+        playersCollection.doc(savedPlayer.id).get()
+          .then(doc => {
+            if (doc.exists) {
+              // プレイヤー情報があれば復元
+              const playerData = doc.data();
+              
+              // 現在のプレイヤー情報を更新
+              currentPlayer = {
+                ...playerData,
+                isActive: true,
+                lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+              };
+              
+              // Firestoreの情報を更新
+              return playersCollection.doc(savedPlayer.id).update({
+                isActive: true,
+                lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+              });
+            } else {
+              // プレイヤー情報がなければ新規作成
+              console.log('保存されたIDのプレイヤーが見つかりません。新規作成します:', savedPlayer.id);
+              
+              // プレイヤー情報を作成
+              currentPlayer = {
+                id: savedPlayer.id,
+                name: savedPlayer.name,
+                isActive: true,
+                joinedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                lastLogin: firebase.firestore.FieldValue.serverTimestamp(),
+                answered: false,
+                answerCorrect: false,
+                points: savedPlayer.points || POINTS_CONFIG.initial,
+                stageId: null
+              };
+              
+              // Firestoreに新規プレイヤー情報を保存
+              return playersCollection.doc(savedPlayer.id).set(currentPlayer);
+            }
+          })
+          .then(() => {
+            // プレイヤー表示を同期
+            syncPlayerDisplay();
+            
+            // プレイヤー画面に遷移
+            showScreen('player-panel');
+            
+            // ポイントのリアルタイムリスナーを開始
+            startPlayerPointsListener();
+            
+            console.log('プレイヤーセッションを自動復元しました:', currentPlayer.name);
+          })
+          .catch(error => {
+            console.error('プレイヤーセッションの自動復元に失敗:', error);
+            // エラーが発生した場合は登録画面のままにする
+          });
+        
+        return true;
+      }
+      
+      return false;
+    }
+
+    // ページ読み込み時に自動的にプレイヤー情報を復元（すぐに実行）
+    const playerRestored = autoRestorePlayerSession();
+    if (playerRestored) {
+      console.log('プレイヤー情報の自動復元を開始しました');
+    } else {
+      console.log('保存されたプレイヤー情報がないため、登録画面を表示します');
+    }
+
   } catch (error) {
     console.error("App initialization error:", error);
     alert("アプリケーションエラー: " + error.message);
