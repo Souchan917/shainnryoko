@@ -2,10 +2,16 @@
     box-sizing: border-box;
     margin: 0;
     padding: 0;
+    -webkit-tap-highlight-color: rgba(0,0,0,0); /* タップ時のハイライトを無効化 */
+    touch-action: manipulation; /* タップ遅延を減らす */
+}
+
+html {
+    font-size: 16px; /* ベースフォントサイズ */
 }
 
 body {
-    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
     background-color: #f5f5f5;
     color: #333;
     line-height: 1.6;
@@ -13,6 +19,7 @@ body {
 
 .container {
     max-width: 800px;
+    width: 100%;
     margin: 0 auto;
     padding: 20px;
 }
@@ -22,30 +29,46 @@ h1, h2, h3 {
     margin-bottom: 20px;
 }
 
+h1 {
+    font-size: 1.8rem;
+}
+
+h2 {
+    font-size: 1.6rem;
+}
+
+h3 {
+    font-size: 1.4rem;
+}
+
 button {
     background-color: #4CAF50;
     color: white;
     border: none;
-    padding: 10px 20px;
+    padding: 12px 20px;
     margin: 10px;
     cursor: pointer;
-    border-radius: 4px;
-    font-size: 16px;
+    border-radius: 8px;
+    font-size: 1rem;
     transition: background-color 0.3s;
+    min-height: 48px; /* タッチしやすいサイズに拡大 */
+    min-width: 48px; /* タッチしやすい最小幅 */
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    font-weight: bold;
 }
 
-button:hover {
+button:hover, button:active {
     background-color: #45a049;
 }
 
 .small-button {
-    font-size: 14px;
-    padding: 6px 12px;
+    font-size: 0.9rem;
+    padding: 8px 15px;
     margin-top: 20px;
     background-color: #607d8b;
 }
 
-.small-button:hover {
+.small-button:hover, .small-button:active {
     background-color: #455a64;
 }
 
@@ -61,11 +84,11 @@ button:hover {
 /* プレイヤー登録画面 */
 #player-registration {
     text-align: center;
-    margin: 40px 0;
+    margin: 20px 0;
     padding: 20px;
     background-color: white;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    border-radius: 12px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
 }
 
 .form-group {
@@ -74,27 +97,31 @@ button:hover {
 
 .form-group label {
     display: block;
-    margin-bottom: 8px;
+    margin-bottom: 10px;
     font-weight: bold;
+    font-size: 1.1rem;
 }
 
 .form-group input {
     width: 100%;
     max-width: 300px;
-    padding: 10px;
+    padding: 12px 15px;
     border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 16px;
+    border-radius: 8px;
+    font-size: 1rem;
+    min-height: 48px; /* タッチしやすいサイズに拡大 */
 }
 
 #register-player-btn {
     margin-top: 20px;
     background-color: #2196F3;
-    font-size: 18px;
-    padding: 12px 24px;
+    font-size: 1.1rem;
+    padding: 15px 30px;
+    width: 100%;
+    max-width: 300px;
 }
 
-#register-player-btn:hover {
+#register-player-btn:hover, #register-player-btn:active {
     background-color: #0b7dda;
 }
 
@@ -108,36 +135,37 @@ button:hover {
     background-color: #ff9800;
 }
 
-#go-to-master-btn:hover {
+#go-to-master-btn:hover, #go-to-master-btn:active {
     background-color: #e68a00;
 }
 
 /* プレイヤー画面 */
 #player-panel {
     background: white;
-    border-radius: 8px;
+    border-radius: 12px;
     padding: 20px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
     margin-top: 20px;
     text-align: center;
 }
 
 .player-info {
     background-color: #e8f5e9;
-    padding: 10px;
-    border-radius: 4px;
+    padding: 15px;
+    border-radius: 8px;
     margin-bottom: 20px;
     font-weight: bold;
 }
 
 .player-info p {
     margin: 5px 0;
+    font-size: 1.1rem;
 }
 
 #player-points {
     font-weight: bold;
     color: #4CAF50;
-    font-size: 1.1em;
+    font-size: 1.2em;
 }
 
 /* ポイント更新アニメーション */
@@ -154,21 +182,30 @@ button:hover {
 /* マスター画面 */
 #master-panel {
     background: white;
-    border-radius: 8px;
+    border-radius: 12px;
     padding: 20px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
     margin-top: 20px;
     text-align: center;
 }
 
 .master-controls {
     margin-bottom: 30px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+}
+
+.master-controls button {
+    flex: 1;
+    min-width: 120px;
 }
 
 .players-list {
     background-color: #f5f5f5;
     padding: 15px;
-    border-radius: 4px;
+    border-radius: 8px;
     margin: 20px 0;
     text-align: left;
 }
@@ -180,9 +217,9 @@ button:hover {
 
 #connected-players li {
     background-color: white;
-    padding: 8px 15px;
-    margin: 5px 0;
-    border-radius: 4px;
+    padding: 10px 15px;
+    margin: 8px 0;
+    border-radius: 8px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     display: flex;
     justify-content: space-between;
@@ -224,20 +261,20 @@ button:hover {
 }
 
 #game-content p {
-    font-size: 18px;
+    font-size: 1.1rem;
     margin-bottom: 20px;
     padding: 10px;
-    border-radius: 4px;
+    border-radius: 8px;
 }
 
 #image-container {
     margin: 20px auto;
     text-align: center;
-    max-width: 500px;
+    max-width: 100%;
     min-height: 100px;
     background-color: #f9f9f9;
     border: 1px dashed #ccc;
-    border-radius: 8px;
+    border-radius: 12px;
     padding: 10px;
     position: relative;
 }
@@ -278,6 +315,8 @@ button:hover {
     color: #333;
     font-weight: bold;
     min-height: 20px;
+    width: 100%;
+    text-align: center;
 }
 
 /* ゲームが開始された時のスタイル */
@@ -298,8 +337,8 @@ button:hover {
     margin-top: 20px;
     padding: 15px;
     background-color: #f8f9fa;
-    border-radius: 8px;
-    box-shadow: 0 1px 5px rgba(0,0,0,0.1);
+    border-radius: 12px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }
 
 #answer-section.hidden {
@@ -308,6 +347,7 @@ button:hover {
 
 #answer-section .form-group {
     display: flex;
+    flex-direction: column;
     justify-content: center;
     gap: 10px;
     margin-bottom: 15px;
@@ -315,29 +355,32 @@ button:hover {
 
 #player-answer {
     flex: 1;
-    max-width: 250px;
-    padding: 10px 15px;
+    width: 100%;
+    padding: 12px 15px;
     border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 16px;
+    border-radius: 8px;
+    font-size: 1rem;
+    min-height: 44px;
 }
 
 #submit-answer-btn {
     background-color: #2196F3;
-    min-width: 100px;
+    width: 100%;
     margin: 0;
+    min-height: 44px;
 }
 
-#submit-answer-btn:hover {
+#submit-answer-btn:hover, #submit-answer-btn:active {
     background-color: #0b7dda;
 }
 
 #answer-result {
-    margin-top: 10px;
+    margin-top: 15px;
     font-weight: bold;
     min-height: 24px;
-    padding: 5px;
-    border-radius: 4px;
+    padding: 10px;
+    border-radius: 8px;
+    font-size: 1.1rem;
 }
 
 #answer-result.correct {
@@ -351,8 +394,8 @@ button:hover {
 }
 
 #answer-time {
-    margin-top: 5px;
-    font-size: 14px;
+    margin-top: 8px;
+    font-size: 0.9rem;
     color: #666;
 }
 
@@ -361,7 +404,7 @@ button:hover {
     margin-top: 20px;
     background-color: #f5f5f5;
     padding: 15px;
-    border-radius: 4px;
+    border-radius: 8px;
     text-align: left;
 }
 
@@ -372,11 +415,11 @@ button:hover {
 
 #player-answers li {
     display: flex;
-    justify-content: space-between;
+    flex-direction: column;
     background-color: white;
-    padding: 8px 15px;
-    margin: 5px 0;
-    border-radius: 4px;
+    padding: 10px 15px;
+    margin: 8px 0;
+    border-radius: 8px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
@@ -390,9 +433,126 @@ button:hover {
 
 #player-answers .player-name {
     font-weight: bold;
+    margin-bottom: 5px;
 }
 
 #player-answers .answer-time {
     color: #666;
-    font-size: 14px;
+    font-size: 0.9rem;
+    align-self: flex-end;
+}
+
+/* モバイル向け最適化 */
+button, input[type="submit"] {
+    min-height: 48px;
+    min-width: 48px;
+    padding: 12px 20px;
+    transition: background-color 0.2s, transform 0.1s;
+}
+
+button:active, input[type="submit"]:active {
+    transform: scale(0.98);
+}
+
+/* iPhone Safariでフォーム入力時に拡大されるのを防ぐ */
+input[type="text"], input[type="number"], select, textarea {
+    font-size: 16px;
+    min-height: 48px;
+    padding: 10px 15px;
+}
+
+/* レスポンシブデザイン */
+@media screen and (max-width: 480px) {
+    body {
+        font-size: 16px;
+    }
+    
+    .container {
+        padding: 10px;
+    }
+    
+    h1 {
+        font-size: 24px;
+    }
+    
+    h2 {
+        font-size: 22px;
+    }
+    
+    h3 {
+        font-size: 18px;
+    }
+    
+    .form-group {
+        margin-bottom: 15px;
+    }
+    
+    /* 解答欄をモバイルフレンドリーにする */
+    #answer-section .form-group {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    #answer-section .form-group input {
+        margin-bottom: 10px;
+        width: 100%;
+    }
+    
+    #answer-section .form-group button {
+        width: 100%;
+    }
+    
+    /* 画像コンテナの調整 */
+    #image-container img {
+        max-width: 100%;
+        height: auto;
+    }
+    
+    /* マスターコントロールの調整 */
+    .master-controls button {
+        margin: 5px;
+        width: calc(50% - 10px);
+    }
+    
+    /* プレイヤーリストと解答状況の調整 */
+    .players-list, .answers-container {
+        max-height: 200px;
+        overflow-y: auto;
+    }
+}
+
+/* iPadなど中サイズ端末用 */
+@media screen and (min-width: 481px) and (max-width: 768px) {
+    .container {
+        padding: 20px 15px;
+    }
+    
+    #answer-section .form-group {
+        flex-direction: row;
+    }
+    
+    #player-answer {
+        width: 70%;
+    }
+    
+    #submit-answer-btn {
+        width: 30%;
+    }
+}
+
+/* 大きな画面での表示を最適化 */
+@media screen and (min-width: 769px) {
+    .container {
+        padding: 30px;
+    }
+    
+    #image-container {
+        max-width: 600px;
+    }
+    
+    #answer-section .form-group {
+        max-width: 600px;
+        margin-left: auto;
+        margin-right: auto;
+    }
 } 

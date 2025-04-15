@@ -170,6 +170,60 @@ document.addEventListener('DOMContentLoaded', function() {
       targetScreen.classList.add('active-screen');
     }
   
+    // モバイルデバイス検出
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+    // モバイルデバイス向けのUI調整
+    function optimizeForMobile() {
+        if (isMobile) {
+            console.log("モバイルデバイスを検出しました。UIを最適化します。");
+            
+            // 画像サイズの最適化
+            const imageContainer = document.getElementById('image-container');
+            if (imageContainer) {
+                imageContainer.style.maxWidth = '100%';
+                imageContainer.style.overflowX = 'auto';
+            }
+            
+            // フォントサイズの調整
+            document.querySelectorAll('button, input, select').forEach(element => {
+                element.classList.add('mobile-friendly');
+            });
+            
+            // タッチ対応のスクロール調整
+            document.querySelectorAll('.players-list, .answers-container').forEach(container => {
+                container.addEventListener('touchstart', function(e) {
+                    this.allowUp = (this.scrollTop > 0);
+                    this.allowDown = (this.scrollTop < this.scrollHeight - this.clientHeight);
+                    this.lastY = e.touches[0].clientY;
+                });
+                
+                container.addEventListener('touchmove', function(e) {
+                    const up = (e.touches[0].clientY > this.lastY);
+                    const down = !up;
+                    this.lastY = e.touches[0].clientY;
+                    
+                    if ((up && this.allowUp) || (down && this.allowDown)) {
+                        e.stopPropagation();
+                    } else {
+                        e.preventDefault();
+                    }
+                });
+            });
+        }
+    }
+
+    // タッチとクリックの両方をサポートする関数
+    function addTouchAndClickEvent(element, eventHandler) {
+        if (element) {
+            element.addEventListener('click', eventHandler);
+            element.addEventListener('touchend', function(e) {
+                e.preventDefault(); // ダブルイベント発火を防止
+                eventHandler(e);
+            });
+        }
+    }
+
     // プレイヤー登録処理
     registerPlayerBtn.addEventListener('click', () => {
       const playerName = playerNameInput.value.trim();
@@ -1015,6 +1069,74 @@ document.addEventListener('DOMContentLoaded', function() {
       if (unsubscribeGameState) {
         unsubscribeGameState();
       }
+    });
+    
+    // モバイル最適化の実行
+    optimizeForMobile();
+    
+    // ボタンイベントをタッチ対応に変更
+    const buttons = [
+        { id: 'register-player-btn', handler: registerPlayer },
+        { id: 'go-to-master-btn', handler: goToMasterScreen },
+        { id: 'start-game', handler: startGame },
+        { id: 'reset-game', handler: resetGame },
+        { id: 'submit-answer-btn', handler: submitAnswer }
+    ];
+    
+    buttons.forEach(button => {
+        const element = document.getElementById(button.id);
+        if (element) {
+            // 既存のイベントリスナーを削除
+            element.removeEventListener('click', button.handler);
+            // タッチとクリックの両方を追加
+            addTouchAndClickEvent(element, button.handler);
+        }
+    });
+    
+    // 戻るボタンにもタッチイベントを追加
+    document.querySelectorAll('#back-to-registration').forEach(button => {
+        button.removeEventListener('click', goToRegistrationScreen);
+        addTouchAndClickEvent(button, goToRegistrationScreen);
+    });
+    
+    // 入力フィールドの最適化
+    const answerInput = document.getElementById('player-answer');
+    if (answerInput && isMobile) {
+        // モバイルで自動キャピタライズをオフにする
+        answerInput.setAttribute('autocapitalize', 'off');
+        // 答えを送信するショートカット
+        answerInput.addEventListener('keyup', function(e) {
+            if (e.key === 'Enter') {
+                const submitBtn = document.getElementById('submit-answer-btn');
+                if (submitBtn) submitBtn.click();
+            }
+        });
+    }
+    
+    // 画面回転時にUIを調整
+    window.addEventListener('resize', function() {
+        if (isMobile) {
+            // 画面サイズ変更時のUI調整
+            const imageContainer = document.getElementById('image-container');
+            if (imageContainer && imageContainer.firstChild) {
+                imageContainer.firstChild.style.maxWidth = '100%';
+            }
+        }
+    });
+    
+    // モバイルデバイスでのページスクロール制御
+    window.addEventListener('load', function() {
+        if (isMobile) {
+            // ソフトキーボードが表示された時に画面がズームされるのを防止
+            document.querySelectorAll('input, textarea').forEach(element => {
+                element.addEventListener('focus', function() {
+                    // 一定時間後にスクロール位置を調整
+                    setTimeout(function() {
+                        window.scrollTo(0, 0);
+                    }, 300);
+                });
+            });
+        }
     });
     
   } catch (error) {
