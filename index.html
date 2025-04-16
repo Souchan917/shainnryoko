@@ -54,6 +54,14 @@
                     <!-- 画像がここに表示されます -->
                 </div>
                 
+                <!-- 正解画像表示エリア -->
+                <div id="answer-image-container" class="hidden">
+                    <h3>正解</h3>
+                    <div class="answer-image">
+                        <!-- 正解画像がここに表示されます -->
+                    </div>
+                </div>
+                
                 <!-- 解答欄 -->
                 <div id="answer-section" class="hidden">
                     <div class="form-group">
@@ -79,9 +87,14 @@
                 <ul id="ranking-list">
                     <!-- ランキングがここに表示されます -->
                 </ul>
+                <!-- ランキング表示専用のスクロールスペーサー -->
+                <div class="ranking-scroll-spacer"></div>
             </div>
             
             <button id="back-to-registration" class="small-button">名前変更</button>
+            
+            <!-- スクロール用の余白エリア -->
+            <div id="scroll-spacer"></div>
         </div>
 
         <!-- マスター画面 -->
@@ -113,6 +126,7 @@
                 <div class="game-buttons">
                     <button id="prepare-game">ゲーム準備</button>
                     <button id="start-game">ゲームスタート</button>
+                    <button id="show-answer">正解を表示する</button>
                     <button id="show-results">結果発表</button>
                     <button id="reset-game">リセット</button>
                 </div>

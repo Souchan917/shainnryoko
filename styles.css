@@ -1501,4 +1501,51 @@ button:hover {
         opacity: 1;
         transform: translateX(0);
     }
+}
+
+/* 正解画像表示エリア */
+#answer-image-container {
+    margin-top: 20px;
+    padding: 15px;
+    border-radius: 8px;
+    background-color: rgba(255, 255, 255, 0.9);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+#answer-image-container h3 {
+    color: #2c3e50;
+    margin-bottom: 10px;
+    font-size: 1.3em;
+}
+
+#answer-image-container.hidden {
+    display: none;
+}
+
+.answer-image {
+    padding: 10px;
+    text-align: center;
+}
+
+.answer-image img {
+    max-width: 100%;
+    max-height: 300px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+/* スクロール用の余白エリア */
+#scroll-spacer {
+    height: 50vh; /* 画面の半分の高さ */
+    width: 100%;
+    margin-top: 30px;
+}
+
+/* ランキング表示専用のスクロールスペーサー */
+.ranking-scroll-spacer {
+    height: 70vh; /* 画面の70%の高さ */
+    width: 100%;
+    margin-top: 30px;
 } 
