@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', function() {
       stage1: {
         id: 'stage1',
         name: 'ステージ1',
-        correctAnswer: ['りんご', 'アップル', 'apple'],
+        correctAnswer: ['箱根', 'はこね', 'ハコネ'],
         imagePath: 'puzzle.png',
         pointReward: 10,
         hint: 'フルーツの王様とも呼ばれています。赤い色が特徴的です。',
