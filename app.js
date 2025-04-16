@@ -1239,6 +1239,10 @@ document.addEventListener('DOMContentLoaded', function() {
           console.log('正解画像を表示します', gameState);
           answerImageContainer.classList.remove('hidden');
           
+          // 正解画像表示時には解答欄を無効化
+          setAnswerInputState(false);
+          console.log('正解画像表示のため解答入力を無効化しました');
+          
           // 正解画像が表示された時に自動スクロール
           setTimeout(() => {
             answerImageContainer.scrollIntoView({ 
@@ -1275,7 +1279,21 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
           // 正解表示フラグがfalseの場合、正解画像を非表示
           answerImageContainer.classList.add('hidden');
+          
+          // 正解画像を非表示にしたとき、プレイヤーがまだ正解していなければ解答欄を有効化
+          // ただし、blockAllAnswersフラグがtrueの場合は有効化しない
+          if (currentPlayer && !currentPlayer.answerCorrect && gameState.gameStarted && !gameState.blockAllAnswers) {
+            setAnswerInputState(true);
+            console.log('正解画像非表示かつプレイヤー未正解のため解答入力を有効化しました');
+          }
         }
+      }
+      
+      // すべての解答を禁止するフラグがある場合、解答欄を無効化
+      // この処理は他の条件より優先
+      if (gameState.blockAllAnswers) {
+        setAnswerInputState(false);
+        console.log('すべての解答が禁止されているため解答入力を無効化しました');
       }
 
       // ゲーム開始時刻を設定（解答時間計算用）
@@ -2278,15 +2296,23 @@ document.addEventListener('DOMContentLoaded', function() {
             updateData.answerImagePath = answerImagePath;
           }
           
+          // 正解を表示する場合は、すべてのプレイヤーの解答入力を禁止するフラグを追加
+          if (showAnswer) {
+            updateData.blockAllAnswers = true;
+            updateGameStatus('正解を表示しました。すべてのプレイヤーの解答入力が無効になりました。');
+          } else {
+            updateData.blockAllAnswers = false;
+            updateGameStatus('正解表示を非表示にしました。未回答のプレイヤーは再び解答できます。');
+          }
+          
           // Firebaseのゲーム状態を更新
           await gameStateCollection.doc('current').update(updateData);
           
           console.log('正解表示状態を更新しました:', showAnswer, '正解画像パス:', answerImagePath);
-          updateGameStatus(showAnswer ? '正解を表示しました' : '正解表示を非表示にしました');
         }
       } catch (error) {
-        console.error('正解表示の処理中にエラーが発生しました:', error);
-        updateGameStatus('正解表示の処理中にエラーが発生しました。');
+        console.error('正解表示エラー:', error);
+        updateGameStatus('正解表示の更新に失敗しました: ' + error.message);
       }
     });
 
