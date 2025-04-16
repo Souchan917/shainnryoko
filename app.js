@@ -1057,26 +1057,20 @@ document.addEventListener('DOMContentLoaded', function() {
       
       // リアルタイムリスナーを設定
       unsubscribeGameState = gameStateCollection.doc('current')
-        .onSnapshot(snapshot => {
-          if (snapshot.exists) {
-            const newGameState = snapshot.data();
-            console.log('ゲーム状態更新:', {
-              gameStarted: newGameState.gameStarted,
-              stageId: newGameState.stageId,
-              isAnswerImageShown: newGameState.isAnswerImageShown,
-              currentImagePath: newGameState.currentImagePath
-            });
+        .onSnapshot((doc) => {
+          console.log("Game state changed:", doc.exists ? doc.data() : null);
+          fbConnectionError = false;
+          
+          if (doc.exists) {
+            const gameState = doc.data();
             
-            // カウントダウン中の場合
-            if (newGameState.countdown) {
-              console.log('カウントダウン開始', newGameState.countdownSeconds);
-              handleCountdown(newGameState.countdownSeconds || 3);
+            // カウントダウン状態の処理
+            if (gameState.countdown === true) {
+              handleCountdown(gameState);
+            } else {
+              // 通常のゲーム状態更新
+              updateGameDisplay(gameState);
             }
-            
-            fbConnectionError = false;
-            
-            // 通常のゲーム状態更新
-            updateGameDisplay(newGameState);
           } else {
             console.log("データベースにゲーム状態がありません");
             // 初期状態を設定
@@ -1202,63 +1196,6 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
       }
 
-      // 正解画像表示モードの処理
-      if (gameState.isAnswerImageShown && gameState.currentImagePath) {
-        console.log('正解画像表示モード:', gameState.currentImagePath);
-        
-        // 画像コンテナが存在する場合のみ処理
-        if (imageContainer) {
-          // 現在の画像をクリア
-          imageContainer.innerHTML = '';
-          
-          // 正解画像を表示
-          const answerImage = document.createElement('img');
-          answerImage.src = gameState.currentImagePath;
-          answerImage.alt = '正解画像';
-          answerImage.classList.add('game-image', 'answer-image');
-          imageContainer.appendChild(answerImage);
-          
-          console.log('正解画像を表示しました');
-        } else {
-          console.warn('画像コンテナが見つかりません');
-        }
-      }
-      // 通常のゲーム画像表示（正解画像表示モードでない場合）
-      else if (gameState.gameStarted && gameState.imagePath) {
-        console.log('ゲーム画像を表示:', gameState.imagePath);
-        
-        // 画像コンテナが存在する場合のみ処理
-        if (imageContainer) {
-          // 現在の画像をクリア
-          imageContainer.innerHTML = '';
-          
-          // ゲーム画像を表示
-          const gameImage = document.createElement('img');
-          gameImage.src = gameState.imagePath;
-          gameImage.alt = 'ゲーム画像';
-          gameImage.classList.add('game-image');
-          imageContainer.appendChild(gameImage);
-        }
-        
-        // 解答セクションを表示
-        if (answerSection) {
-          answerSection.classList.remove('hidden');
-        }
-      } else if (!gameState.gameStarted) {
-        // ゲームが開始されていない場合
-        console.log('ゲームは開始されていません');
-        
-        // 画像をクリア
-        if (imageContainer) {
-          imageContainer.innerHTML = '<div class="no-game">ゲームを待機中...</div>';
-        }
-        
-        // 解答セクションを非表示
-        if (answerSection) {
-          answerSection.classList.add('hidden');
-        }
-      }
-
       // ランキング表示の処理
       if (gameState.showRanking && gameState.rankingStageId) {
         console.log('ランキング表示を更新');
@@ -1366,6 +1303,54 @@ document.addEventListener('DOMContentLoaded', function() {
         // ヒントセクションを非表示
         if (hintSection) {
           hintSection.classList.add('hidden');
+        }
+      }
+
+      // 画像を表示
+      const imageContainer = document.getElementById('image-container');
+      if (imageContainer && gameState) {
+        if (gameState.gameStarted && gameState.imagePath) {
+          // 画像を表示
+          imageContainer.innerHTML = `<img id="puzzle-image" src="${gameState.imagePath}" alt="${gameState.stageName || 'ゲーム画像'}" style="max-width: 100%; height: auto; border-radius: 8px;">`;
+          
+          // ゲーム中のメッセージ
+          const gameContentP = document.querySelector('#game-content > p');
+          if (gameContentP) {
+            gameContentP.textContent = `ゲームが開始されました！ステージ: ${gameState.stageName || ''}`;
+            gameContentP.classList.add('game-started');
+          }
+          
+          // 解答欄を表示
+          if (answerSection) {
+            answerSection.classList.remove('hidden');
+            
+            // 新しいステージでなければ、かつプレイヤーが正解していない場合のみ入力欄をクリア
+            if (playerAnswer && (!currentPlayer.answerCorrect || currentPlayer.stageId !== gameState.stageId)) {
+              // 正解済みプレイヤーの場合は入力欄をクリアしない
+              if (!currentPlayer.answerCorrect) {
+                playerAnswer.value = '';
+                playerAnswer.focus();
+              }
+            }
+          }
+        } else {
+          // ゲームが開始されていない場合
+          imageContainer.innerHTML = '';
+          
+          // 待機中のメッセージ
+          const gameContentP = document.querySelector('#game-content > p');
+          if (gameContentP) {
+            gameContentP.textContent = 'マスターがゲームを開始するのを待っています...';
+            gameContentP.classList.remove('game-started');
+          }
+          
+          // 解答欄を非表示
+          if (answerSection) {
+            answerSection.classList.add('hidden');
+          }
+          
+          // 解答関連の状態をリセット
+          resetAnswerInput();
         }
       }
     }
@@ -2337,71 +2322,6 @@ document.addEventListener('DOMContentLoaded', function() {
           resetAnswerInput();
         }
       }
-    }
-
-    // 正解画像を表示する関数
-    async function showAnswerImage() {
-      try {
-        console.log("正解画像を表示します...");
-        updateGameStatus("正解画像を表示中...");
-        
-        // 現在のゲーム状態を取得
-        const doc = await gameStateCollection.doc('current').get();
-        if (!doc.exists) {
-          updateGameStatus("ゲーム状態が見つかりません");
-          return;
-        }
-        
-        const gameState = doc.data();
-        
-        // 選択されたステージIDを取得
-        const selectedStageId = gameState.stageId || 'stage1';
-        const selectedStage = STAGES[selectedStageId];
-        
-        if (!selectedStage) {
-          updateGameStatus(`ステージが見つかりません: ${selectedStageId}`);
-          return;
-        }
-
-        // ディレクトリ内の正解画像ファイルを直接使用
-        // 例: puzzle1.png -> answer_puzzle1.png
-        const imagePath = selectedStage.imagePath;
-        const answerImagePath = 'answer_' + imagePath;
-        
-        console.log('正解画像パス:', answerImagePath);
-        
-        // 画像要素を直接作成して表示
-        const imageContainer = document.getElementById('image-container');
-        if (imageContainer) {
-          // コンテナをクリア
-          imageContainer.innerHTML = '';
-          
-          // 新しい画像要素を作成
-          const img = document.createElement('img');
-          img.src = answerImagePath;
-          img.alt = '正解画像';
-          img.classList.add('game-image', 'answer-image');
-          
-          // 画像コンテナに追加
-          imageContainer.appendChild(img);
-          
-          console.log('正解画像を表示しました:', answerImagePath);
-          updateGameStatus(`正解画像を表示しました: ${selectedStage.name}`);
-        } else {
-          console.error('画像コンテナが見つかりません');
-          updateGameStatus('画像コンテナが見つかりません');
-          return;
-        }
-      } catch (error) {
-        console.error('正解画像の表示に失敗しました:', error);
-        updateGameStatus('正解画像の表示に失敗しました: ' + error.message);
-      }
-    }
-    
-    // 正解画像表示ボタンのイベントリスナー
-    const showAnswerImageBtn = document.getElementById('show-answer-image');
-    if (showAnswerImageBtn) {
-      showAnswerImageBtn.addEventListener('click', showAnswerImage);
     }
 
   } catch (error) {
