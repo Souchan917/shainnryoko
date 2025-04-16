@@ -577,13 +577,26 @@ button:hover {
 
 /* ランキング表示のスタイル */
 #results-ranking {
-    margin-top: 15px;
-    padding: 10px;
-    background-color: #f8f9fa;
-    border-radius: 8px;
-    border: 1px solid #dee2e6;
+    margin-top: 20px;
+    padding: 15px 20px;
+    background: linear-gradient(145deg, #fafbfc, #f0f1f3);
+    border-radius: 12px;
+    border: none;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
     transition: all 0.3s ease;
-    font-size: 13px;
+    font-size: 14px;
+    position: relative;
+    overflow: hidden;
+}
+
+#results-ranking::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 6px;
+    height: 100%;
+    background: linear-gradient(to bottom, #4facfe 0%, #00f2fe 100%);
 }
 
 #results-ranking.hidden {
@@ -591,172 +604,238 @@ button:hover {
 }
 
 #ranking-title {
-    margin-top: 0;
-    color: #495057;
+    margin: 0 0 15px 0;
+    color: #333;
     text-align: center;
-    font-size: 1.1em;
-    border-bottom: 1px solid #dee2e6;
-    padding-bottom: 8px;
+    font-size: 1.2em;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
     transition: all 0.5s ease;
 }
 
 /* ランキング発表中のタイトル */
 #ranking-title.title-announcing {
-    color: #1e88e5;
-    font-size: 1.2em;
+    color: #4facfe;
+    font-size: 1.3em;
     font-weight: bold;
-    text-shadow: 0 0 5px rgba(30, 136, 229, 0.3);
+    text-shadow: 0 0 10px rgba(79, 172, 254, 0.2);
 }
 
 /* 優勝者発表後のタイトル */
 #ranking-title.title-winner-announced {
-    color: #ffd700;
-    font-size: 1.3em;
+    color: #f9b12e;
+    font-size: 1.4em;
     font-weight: bold;
-    text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+    text-shadow: 0 0 15px rgba(249, 177, 46, 0.3);
     animation: title-winner-glow 2s infinite alternate;
 }
 
 @keyframes title-winner-glow {
     0% {
-        text-shadow: 0 0 5px rgba(255, 215, 0, 0.5);
+        text-shadow: 0 0 10px rgba(249, 177, 46, 0.3);
     }
     100% {
-        text-shadow: 0 0 15px rgba(255, 215, 0, 0.8), 0 0 20px rgba(255, 215, 0, 0.4);
+        text-shadow: 0 0 20px rgba(249, 177, 46, 0.6), 0 0 30px rgba(249, 177, 46, 0.3);
     }
 }
 
 #ranking-list {
     list-style: none;
     padding: 0;
-    margin: 10px 0 0 0;
-    /* フレックスボックスで逆順に表示するための設定 */
+    margin: 0;
     display: flex;
     flex-direction: column;
-    /* 順位上位を上に表示 */
     justify-content: flex-start;
+    gap: 8px;
 }
 
 .ranking-item {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 6px 8px;
-    margin-bottom: 4px;
+    padding: 10px 15px;
+    margin-bottom: 0;
     background-color: #ffffff;
-    border-radius: 4px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    font-size: 12px;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    font-size: 13px;
     width: 100%;
-    /* ランキングアイテムの位置を固定するための設定 */
     transform-origin: center left;
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
 }
 
-/* ランキング表示のアニメーション - 下位（4位以降）用 */
-.ranking-item.hidden {
-    opacity: 0;
-    transform: translateX(-50px) translateY(20px);
+.ranking-item:hover {
+    transform: translateX(3px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
-.ranking-item.reveal {
-    animation: reveal-item 0.5s ease forwards;
+/* ランキングアイテムのスタイル */
+.ranking-item .rank {
+    font-weight: 700;
+    color: #4a5568;
+    width: 40px;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 2;
 }
 
-@keyframes reveal-item {
-    0% {
-        opacity: 0;
-        transform: translateX(-50px) translateY(20px);
-    }
-    100% {
-        opacity: 1;
-        transform: translateX(0) translateY(0);
-    }
+.ranking-item .player-name {
+    flex-grow: 1;
+    padding: 0 8px;
+    color: #2d3748;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 40%;
+    position: relative;
+    z-index: 2;
 }
 
-/* TOP3のアニメーション - 上から下へ */
-.ranking-item.top-1.hidden,
-.ranking-item.top-2.hidden,
-.ranking-item.top-3.hidden {
-    opacity: 0;
-    transform: translateX(-50px) translateY(-20px);
+.ranking-item .answer-time {
+    color: #718096;
+    margin-right: 10px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    font-weight: 500;
+    position: relative;
+    z-index: 2;
 }
 
-.ranking-item.reveal-bronze {
-    animation: reveal-bronze 1s ease forwards;
+.ranking-item .earned-points {
+    color: #48bb78;
+    font-weight: 700;
+    width: 45px;
+    text-align: right;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 2;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background-color: rgba(72, 187, 120, 0.1);
 }
 
-.ranking-item.reveal-silver {
-    animation: reveal-silver 1.2s ease forwards;
+/* 自分の結果のハイライト */
+.ranking-item.my-result {
+    background: linear-gradient(145deg, #fff9e6, #fff3d1);
+    box-shadow: 0 2px 10px rgba(255, 193, 7, 0.15);
 }
 
-.ranking-item.reveal-gold {
-    animation: reveal-gold 1.5s ease forwards;
+.ranking-item.my-result::after {
+    content: 'あなた';
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    font-size: 9px;
+    padding: 2px 4px;
+    background-color: rgba(255, 193, 7, 0.2);
+    color: #d69e00;
+    border-radius: 3px;
+    font-weight: bold;
 }
 
-@keyframes reveal-bronze {
-    0% {
-        opacity: 0;
-        transform: translateX(-50px) translateY(-20px);
-    }
-    40% {
-        opacity: 0.9;
-        transform: translateX(10px) translateY(5px);
-    }
-    70% {
-        transform: translateX(-5px) translateY(-2px);
-    }
-    100% {
-        opacity: 1;
-        transform: translateX(0) translateY(0);
-        box-shadow: 0 0 15px rgba(205, 127, 50, 0.4);
-    }
+/* トップ3の装飾 */
+.ranking-item.top-1 {
+    background: linear-gradient(145deg, #fffaf0, #fff9db);
+    border-left: none;
+    margin-bottom: 15px;
+    padding: 12px 16px;
+    box-shadow: 0 5px 15px rgba(255, 215, 0, 0.2);
+    position: relative;
+    overflow: hidden;
 }
 
-@keyframes reveal-silver {
-    0% {
-        opacity: 0;
-        transform: translateX(-70px) translateY(-30px);
-    }
-    45% {
-        opacity: 0.9;
-        transform: translateX(15px) translateY(8px);
-    }
-    75% {
-        transform: translateX(-8px) translateY(-3px);
-    }
-    100% {
-        opacity: 1;
-        transform: translateX(0) translateY(0);
-        box-shadow: 0 0 20px rgba(192, 192, 192, 0.5);
-    }
+.ranking-item.top-1::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(45deg, rgba(255, 215, 0, 0.15) 0%, rgba(255, 215, 0, 0) 70%);
+    z-index: 1;
 }
 
-@keyframes reveal-gold {
-    0% {
-        opacity: 0;
-        transform: translateX(-100px) translateY(-50px);
-    }
-    10% {
-        opacity: 0.3;
-    }
-    50% {
-        opacity: 1;
-        transform: translateX(20px) translateY(10px);
-    }
-    65% {
-        transform: translateX(-10px) translateY(-5px);
-    }
-    80% {
-        transform: translateX(5px) translateY(2px);
-    }
-    90% {
-        transform: translateX(-2px) translateY(-1px);
-    }
-    100% {
-        opacity: 1;
-        transform: translateX(0) translateY(0);
-        box-shadow: 0 0 30px rgba(255, 215, 0, 0.6);
-    }
+.ranking-item.top-1 .rank {
+    color: #b7791f;
+    font-size: 16px;
+}
+
+.ranking-item.top-1 .earned-points {
+    color: #b7791f;
+    background-color: rgba(183, 121, 31, 0.1);
+    font-size: 14px;
+}
+
+.ranking-item.top-2 {
+    background: linear-gradient(145deg, #f8fafc, #f1f5f9);
+    border-left: none;
+    margin-bottom: 8px;
+    box-shadow: 0 4px 12px rgba(192, 192, 192, 0.15);
+    position: relative;
+    overflow: hidden;
+}
+
+.ranking-item.top-2::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(45deg, rgba(192, 192, 192, 0.15) 0%, rgba(192, 192, 192, 0) 70%);
+    z-index: 1;
+}
+
+.ranking-item.top-2 .rank {
+    color: #718096;
+}
+
+.ranking-item.top-3 {
+    background: linear-gradient(145deg, #fff5ed, #fff1e6);
+    border-left: none;
+    margin-bottom: 8px;
+    box-shadow: 0 4px 12px rgba(205, 127, 50, 0.1);
+    position: relative;
+    overflow: hidden;
+}
+
+.ranking-item.top-3::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(45deg, rgba(205, 127, 50, 0.1) 0%, rgba(205, 127, 50, 0) 70%);
+    z-index: 1;
+}
+
+.ranking-item.top-3 .rank {
+    color: #dd6b20;
+}
+
+/* メダルアイコン */
+.ranking-item.top-1 .rank::before {
+    content: '🥇';
+    margin-right: 5px;
+    font-size: 16px;
+}
+
+.ranking-item.top-2 .rank::before {
+    content: '🥈';
+    margin-right: 5px;
+    font-size: 14px;
+}
+
+.ranking-item.top-3 .rank::before {
+    content: '🥉';
+    margin-right: 5px;
+    font-size: 14px;
 }
 
 /* 優勝者発表時のエフェクト */
@@ -775,8 +854,8 @@ button:hover {
     height: 200%;
     background: radial-gradient(
         circle,
-        rgba(255, 215, 0, 0.1) 0%,
-        rgba(255, 215, 0, 0) 70%
+        rgba(249, 177, 46, 0.1) 0%,
+        rgba(249, 177, 46, 0) 70%
     );
     animation: winner-pulse 3s ease-out infinite;
 }
@@ -790,19 +869,19 @@ button:hover {
     height: 100%;
     background: linear-gradient(
         90deg,
-        rgba(255, 215, 0, 0) 0%,
-        rgba(255, 215, 0, 0.2) 50%,
-        rgba(255, 215, 0, 0) 100%
+        rgba(249, 177, 46, 0) 0%,
+        rgba(249, 177, 46, 0.2) 50%,
+        rgba(249, 177, 46, 0) 100%
     );
     animation: winner-shine 2.5s ease-in-out infinite;
 }
 
 @keyframes winner-glow {
     0% {
-        box-shadow: 0 0 5px rgba(255, 215, 0, 0.1);
+        box-shadow: 0 0 5px rgba(249, 177, 46, 0.1);
     }
     100% {
-        box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
+        box-shadow: 0 4px 25px rgba(249, 177, 46, 0.15);
     }
 }
 
@@ -834,8 +913,7 @@ button:hover {
 
 /* 1位の特別強調表示 */
 .ranking-item.top-1.reveal-gold {
-    background-color: #fffaf0;
-    border-left: 4px solid #ffd700;
+    background: linear-gradient(145deg, #fffdf5, #fff9e6);
     position: relative;
     z-index: 2;
     overflow: hidden;
@@ -861,9 +939,9 @@ button:hover {
     height: 100%;
     background: linear-gradient(
         90deg,
-        rgba(255, 215, 0, 0) 0%,
-        rgba(255, 215, 0, 0.4) 50%,
-        rgba(255, 215, 0, 0) 100%
+        rgba(249, 177, 46, 0) 0%,
+        rgba(249, 177, 46, 0.4) 50%,
+        rgba(249, 177, 46, 0) 100%
     );
     animation: gold-shine 1.5s ease-in-out 1.5s infinite;
     z-index: -1;
@@ -900,10 +978,13 @@ button:hover {
 .no-results {
     text-align: center;
     font-style: italic;
-    color: #666;
-    padding: 20px;
+    color: #a0aec0;
+    padding: 25px;
     opacity: 0;
     animation: fade-in 1s ease forwards;
+    background-color: #f8fafc;
+    border-radius: 8px;
+    border: 1px dashed #e2e8f0;
 }
 
 @keyframes fade-in {
@@ -980,8 +1061,9 @@ button:hover {
     align-items: center;
     visibility: hidden;
     opacity: 0;
-    background-color: rgba(0, 0, 0, 0.92);
-    background-image: radial-gradient(circle, rgba(25, 25, 30, 0.9) 0%, rgba(0, 0, 0, 0.95) 70%);
+    background-color: rgba(18, 18, 24, 0.9);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
     transition: visibility 0.3s, opacity 0.3s;
     overflow: hidden;
 }
@@ -992,160 +1074,188 @@ button:hover {
 }
 
 .countdown-number {
-    font-size: 200px;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    font-size: 180px;
     font-weight: 900;
     color: white;
-    text-shadow: 
-        0 0 20px rgba(255, 255, 255, 0.8),
-        0 0 40px rgba(255, 255, 255, 0.6),
-        0 0 60px rgba(255, 255, 255, 0.4),
-        0 0 80px rgba(255, 255, 255, 0.2);
+    text-shadow: none;
     transform-origin: center;
     transform: scale(0.5);
     opacity: 0;
     transition: transform 0.3s, opacity 0.3s;
+    position: relative;
+}
+
+.countdown-number::after {
+    content: '';
+    position: absolute;
+    width: 120%;
+    height: 5px;
+    background: #fff;
+    bottom: 30px;
+    left: -10%;
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.5s ease-out;
+    opacity: 0.6;
 }
 
 /* カウントダウン中のアニメーション */
 .countdown-overlay.counting .countdown-number {
-    animation: countdownPulse 0.9s ease-out forwards;
+    animation: modernCountdown 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     opacity: 1;
     transform: scale(1);
 }
 
+.countdown-overlay.counting .countdown-number::after {
+    animation: lineReveal 0.6s 0.2s forwards;
+}
+
 /* カウントダウンが"3"の時の色 */
 .countdown-overlay[data-count="3"] .countdown-number {
-    color: #FF5252;
-    text-shadow: 
-        0 0 20px rgba(255, 82, 82, 0.8),
-        0 0 40px rgba(255, 82, 82, 0.6),
-        0 0 60px rgba(255, 82, 82, 0.4),
-        0 0 80px rgba(255, 82, 82, 0.2);
+    color: #ffffff;
+    background: linear-gradient(135deg, #FF416C 0%, #FF4B2B 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-fill-color: transparent;
+}
+
+.countdown-overlay[data-count="3"] .countdown-number::after {
+    background: linear-gradient(90deg, #FF416C 0%, #FF4B2B 100%);
 }
 
 /* カウントダウンが"2"の時の色 */
 .countdown-overlay[data-count="2"] .countdown-number {
-    color: #FFEB3B;
-    text-shadow: 
-        0 0 20px rgba(255, 235, 59, 0.8),
-        0 0 40px rgba(255, 235, 59, 0.6),
-        0 0 60px rgba(255, 235, 59, 0.4),
-        0 0 80px rgba(255, 235, 59, 0.2);
+    color: #ffffff;
+    background: linear-gradient(135deg, #FFDB4D 0%, #FFCA28 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-fill-color: transparent;
+}
+
+.countdown-overlay[data-count="2"] .countdown-number::after {
+    background: linear-gradient(90deg, #FFDB4D 0%, #FFCA28 100%);
 }
 
 /* カウントダウンが"1"の時の色 */
 .countdown-overlay[data-count="1"] .countdown-number {
-    color: #4CAF50;
-    text-shadow: 
-        0 0 20px rgba(76, 175, 80, 0.8),
-        0 0 40px rgba(76, 175, 80, 0.6),
-        0 0 60px rgba(76, 175, 80, 0.4),
-        0 0 80px rgba(76, 175, 80, 0.2);
+    color: #ffffff;
+    background: linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-fill-color: transparent;
+}
+
+.countdown-overlay[data-count="1"] .countdown-number::after {
+    background: linear-gradient(90deg, #4CAF50 0%, #2E7D32 100%);
 }
 
 /* 最終カウントダウン（GO!）の表示 */
 .countdown-overlay.final .countdown-number {
-    color: #2196F3;
-    font-size: 220px;
-    text-shadow: 
-        0 0 20px rgba(33, 150, 243, 0.8),
-        0 0 40px rgba(33, 150, 243, 0.6),
-        0 0 60px rgba(33, 150, 243, 0.4),
-        0 0 80px rgba(33, 150, 243, 0.2);
-    animation: finalCountdown 1s ease-out forwards;
-    letter-spacing: 10px;
+    color: #ffffff;
+    background: linear-gradient(135deg, #2196F3 0%, #0D47A1 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-fill-color: transparent;
+    font-size: 160px;
+    animation: goReveal 1s cubic-bezier(0.19, 1, 0.22, 1) forwards;
+    letter-spacing: 5px;
 }
 
-/* カウントダウン完了時のアニメーション */
-.countdown-overlay.complete {
-    animation: fadeOut 0.8s ease-out forwards;
-}
-
-/* 波紋エフェクト */
-.countdown-overlay.counting::before {
+.countdown-overlay.final::before {
     content: '';
     position: absolute;
     top: 50%;
     left: 50%;
-    width: 10vw;
-    height: 10vw;
-    background: transparent;
+    width: 200px;
+    height: 200px;
+    background: rgba(33, 150, 243, 0.1);
     border-radius: 50%;
     transform: translate(-50%, -50%) scale(0);
-    border: 2px solid rgba(255, 255, 255, 0.5);
     z-index: -1;
-    animation: wave 1s ease-out;
+    animation: finalPulse 1s cubic-bezier(0.19, 1, 0.22, 1) forwards;
 }
 
-/* アニメーションキーフレーム */
-@keyframes countdownPulse {
-    0% {
-        transform: scale(0.5) rotate(-10deg);
-        opacity: 0;
-    }
-    20% {
-        transform: scale(1.1) rotate(5deg);
-        opacity: 1;
-    }
-    60% {
-        transform: scale(0.95) rotate(0deg);
-        opacity: 1;
-    }
-    100% {
-        transform: scale(1) rotate(0deg);
-        opacity: 0.8;
-    }
+/* カウントダウン完了時のアニメーション */
+.countdown-overlay.complete {
+    animation: modernFadeOut 0.8s cubic-bezier(0.19, 1, 0.22, 1) forwards;
 }
 
-@keyframes finalCountdown {
+/* モダンアニメーションキーフレーム */
+@keyframes modernCountdown {
     0% {
         transform: scale(0.5);
         opacity: 0;
-        letter-spacing: 0px;
+        filter: blur(10px);
     }
-    50% {
-        transform: scale(1.2);
+    30% {
+        transform: scale(1.05);
         opacity: 1;
-        letter-spacing: 15px;
+        filter: blur(0);
+    }
+    60% {
+        transform: scale(0.98);
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes lineReveal {
+    0% {
+        transform: scaleX(0);
+    }
+    100% {
+        transform: scaleX(1);
+    }
+}
+
+@keyframes goReveal {
+    0% {
+        transform: scale(0.8);
+        opacity: 0;
+        letter-spacing: 0px;
+        filter: blur(5px);
+    }
+    40% {
+        opacity: 1;
+        filter: blur(0);
+    }
+    70% {
+        transform: scale(1.1);
+        letter-spacing: 10px;
     }
     100% {
         transform: scale(1);
         opacity: 0;
-        letter-spacing: 10px;
+        letter-spacing: 5px;
+        filter: blur(10px);
     }
 }
 
-@keyframes fadeOut {
-    0% {
-        opacity: 1;
-    }
-    100% {
-        opacity: 0;
-    }
-}
-
-@keyframes wave {
+@keyframes finalPulse {
     0% {
         transform: translate(-50%, -50%) scale(0);
-        opacity: 1;
-        border-width: 10px;
+        opacity: 0.8;
     }
     100% {
-        transform: translate(-50%, -50%) scale(4);
+        transform: translate(-50%, -50%) scale(5);
         opacity: 0;
-        border-width: 1px;
     }
 }
 
-@keyframes pulse {
+@keyframes modernFadeOut {
     0% {
-        box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7);
-    }
-    70% {
-        box-shadow: 0 0 0 50px rgba(255, 255, 255, 0);
+        opacity: 1;
     }
     100% {
-        box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+        opacity: 0;
+        backdrop-filter: blur(0px);
     }
 }
 
@@ -1292,4 +1402,103 @@ button:hover {
     background-color: #fff4e6;
     border-left: 3px solid #cd7f32; /* 銅 */
     margin-bottom: 8px;
+}
+
+/* ランキング表示のアニメーション */
+.ranking-item.hidden {
+    opacity: 0;
+    transform: translateX(-50px);
+}
+
+.ranking-item.reveal {
+    animation: reveal-item 0.5s ease forwards;
+}
+
+@keyframes reveal-item {
+    0% {
+        opacity: 0;
+        transform: translateX(-50px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* TOP3のアニメーション */
+.ranking-item.reveal-bronze {
+    animation: reveal-bronze 0.8s ease forwards;
+}
+
+.ranking-item.reveal-silver {
+    animation: reveal-silver 1s ease forwards;
+}
+
+.ranking-item.reveal-gold {
+    animation: reveal-gold 1.2s ease forwards;
+}
+
+@keyframes reveal-bronze {
+    0% {
+        opacity: 0;
+        transform: translateX(-60px);
+    }
+    40% {
+        opacity: 0.9;
+        transform: translateX(15px);
+    }
+    70% {
+        transform: translateX(-5px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateX(0);
+        box-shadow: 0 0 15px rgba(205, 127, 50, 0.4);
+    }
+}
+
+@keyframes reveal-silver {
+    0% {
+        opacity: 0;
+        transform: translateX(-80px);
+    }
+    45% {
+        opacity: 0.9;
+        transform: translateX(20px);
+    }
+    75% {
+        transform: translateX(-8px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateX(0);
+        box-shadow: 0 0 20px rgba(192, 192, 192, 0.5);
+    }
+}
+
+@keyframes reveal-gold {
+    0% {
+        opacity: 0;
+        transform: translateX(-100px);
+    }
+    10% {
+        opacity: 0.3;
+    }
+    50% {
+        opacity: 1;
+        transform: translateX(25px);
+    }
+    65% {
+        transform: translateX(-12px);
+    }
+    80% {
+        transform: translateX(6px);
+    }
+    90% {
+        transform: translateX(-3px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateX(0);
+    }
 } 

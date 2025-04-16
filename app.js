@@ -1506,89 +1506,96 @@ document.addEventListener('DOMContentLoaded', function() {
       
       // アニメーションのタイミングを設定
       let delay = 800; // 開始時の遅延（ミリ秒） - 演出のため長めに
-      const itemDelay = 250; // 通常順位のアイテム間の遅延 - 少し長く
-      const specialDelay = 1000; // 特別な順位（TOP3）の間の遅延 - よりドラマチックに
+      const itemDelay = 200; // 各アイテム間の遅延を0.2秒に統一
+      const specialDelay = 600; // 特別な順位（TOP3）の間の遅延
       
-      // 下位から順に表示
+      // 演出開始 - 下位から順に表示
       updateGameStatus('まずは下位から発表します...');
       
       // 下位からの表示前に少し待つ
       setTimeout(() => {
-        // 下位から順に表示（ランキングの降順 - 下位から上位へ）
-        // 数値の大きい順に並べる
-        const sortedOthers = [...otherPlaces].sort((a, b) => b.rank - a.rank);
+        // 下位から順に表示（15位から4位まで）
+        if (otherPlaces.length > 0) {
+          // 順位の降順（大きい順）に並び替え - 15位、14位、...という順序に
+          const sortedOthers = [...otherPlaces].sort((a, b) => b.rank - a.rank);
+          
+          // 一つずつ順番に表示
+          sortedOthers.forEach((item, index) => {
+            setTimeout(() => {
+              item.element.classList.remove('hidden');
+              item.element.classList.add('reveal');
+              
+              // 最後の項目表示後に少し間を開ける
+              if (index === sortedOthers.length - 1) {
+                updateGameStatus('続いて上位3名の発表です...');
+              }
+            }, index * itemDelay);
+          });
+          
+          // 次に3位を表示する準備（下位表示後に少し間を空ける）
+          delay += (sortedOthers.length * itemDelay) + 1000;
+        } else {
+          // 下位がいない場合は直接3位からスタート
+          updateGameStatus('上位3名の発表です...');
+          delay += 500;
+        }
         
-        sortedOthers.forEach((item, index) => {
+        // TOP3を順番に表示する（3位→2位→1位）
+        if (thirdPlace) {
           setTimeout(() => {
-            item.element.classList.remove('hidden');
-            item.element.classList.add('reveal');
+            // 表示する時に効果音を鳴らしたりする場合はここに追加
+            updateGameStatus('🥉 3位発表！');
+            setTimeout(() => {
+              document.querySelector('[data-rank="3"]').classList.remove('hidden');
+              document.querySelector('[data-rank="3"]').classList.add('reveal-bronze');
+            }, 300); // 効果音のための少しの遅延
+          }, delay);
+          delay += specialDelay;
+        }
+        
+        if (secondPlace) {
+          setTimeout(() => {
+            updateGameStatus('🥈 2位発表！');
+            setTimeout(() => {
+              document.querySelector('[data-rank="2"]').classList.remove('hidden');
+              document.querySelector('[data-rank="2"]').classList.add('reveal-silver');
+            }, 300);
+          }, delay);
+          delay += specialDelay;
+        }
+        
+        // 1位の発表前に少し間を空ける
+        delay += 400;
+        
+        if (firstPlace) {
+          // 1位発表前のカウントダウン効果
+          setTimeout(() => {
+            updateGameStatus('そして栄えある優勝者は...');
+          }, delay);
+          
+          // カウントダウンを短縮（約1秒に）
+          setTimeout(() => { updateGameStatus('3...'); }, delay + 300);
+          setTimeout(() => { updateGameStatus('2...'); }, delay + 600);
+          setTimeout(() => { updateGameStatus('1...'); }, delay + 900);
+          
+          // 1位の発表（特別な演出付き）
+          setTimeout(() => {
+            document.querySelector('[data-rank="1"]').classList.remove('hidden');
+            document.querySelector('[data-rank="1"]').classList.add('reveal-gold');
+            updateGameStatus('🏆 優勝者発表！おめでとうございます！🎉');
             
-            // 最後の項目表示後に少し間を開ける
-            if (index === sortedOthers.length - 1) {
-              updateGameStatus('続いて上位3名の発表です...');
+            // 背景でキラキラエフェクトなどを表示したい場合はここで追加
+            const resultSection = document.getElementById('results-ranking');
+            resultSection.classList.add('winner-announced');
+            
+            // ランキングタイトルも更新
+            if (rankingTitle) {
+              rankingTitle.textContent = `${stageName} 優勝者：${firstPlace.element.querySelector('.player-name').textContent}`;
+              rankingTitle.classList.add('title-winner-announced');
             }
-          }, index * itemDelay);
-        });
+          }, delay + 1200);
+        }
       }, delay);
-      
-      // 次に3位を表示する準備（少し間を空ける）
-      delay += (otherPlaces.length * itemDelay) + 1500;
-      
-      // TOP3を順番に表示する（3位→2位→1位）
-      if (thirdPlace) {
-        setTimeout(() => {
-          // 表示する時に効果音を鳴らしたりする場合はここに追加
-          updateGameStatus('🥉 3位発表！');
-          setTimeout(() => {
-            document.querySelector('[data-rank="3"]').classList.remove('hidden');
-            document.querySelector('[data-rank="3"]').classList.add('reveal-bronze');
-          }, 500); // 効果音のための少しの遅延
-        }, delay);
-        delay += specialDelay;
-      }
-      
-      if (secondPlace) {
-        setTimeout(() => {
-          updateGameStatus('🥈 2位発表！');
-          setTimeout(() => {
-            document.querySelector('[data-rank="2"]').classList.remove('hidden');
-            document.querySelector('[data-rank="2"]').classList.add('reveal-silver');
-          }, 500);
-        }, delay);
-        delay += specialDelay;
-      }
-      
-      // 1位の発表前に少し長めの間（ドラムロール効果）
-      delay += 800;
-      
-      if (firstPlace) {
-        // 1位発表前のカウントダウン効果
-        setTimeout(() => {
-          updateGameStatus('そして栄えある優勝者は...');
-        }, delay);
-        
-        // カウントダウンを短縮（約1秒に）
-        setTimeout(() => { updateGameStatus('3...'); }, delay + 300);
-        setTimeout(() => { updateGameStatus('2...'); }, delay + 600);
-        setTimeout(() => { updateGameStatus('1...'); }, delay + 900);
-        
-        // 1位の発表（特別な演出付き）
-        setTimeout(() => {
-          document.querySelector('[data-rank="1"]').classList.remove('hidden');
-          document.querySelector('[data-rank="1"]').classList.add('reveal-gold');
-          updateGameStatus('🏆 優勝者発表！おめでとうございます！🎉');
-          
-          // 背景でキラキラエフェクトなどを表示したい場合はここで追加
-          const resultSection = document.getElementById('results-ranking');
-          resultSection.classList.add('winner-announced');
-          
-          // ランキングタイトルも更新
-          if (rankingTitle) {
-            rankingTitle.textContent = `${stageName} 優勝者：${firstPlace.element.querySelector('.player-name').textContent}`;
-            rankingTitle.classList.add('title-winner-announced');
-          }
-        }, delay + 1200);
-      }
     }
 
     // ヒント購入ボタンのイベントリスナー
