@@ -590,19 +590,51 @@ button:hover {
     display: none;
 }
 
-#results-ranking h3 {
+#ranking-title {
     margin-top: 0;
     color: #495057;
     text-align: center;
     font-size: 1.1em;
     border-bottom: 1px solid #dee2e6;
     padding-bottom: 8px;
+    transition: all 0.5s ease;
+}
+
+/* ランキング発表中のタイトル */
+#ranking-title.title-announcing {
+    color: #1e88e5;
+    font-size: 1.2em;
+    font-weight: bold;
+    text-shadow: 0 0 5px rgba(30, 136, 229, 0.3);
+}
+
+/* 優勝者発表後のタイトル */
+#ranking-title.title-winner-announced {
+    color: #ffd700;
+    font-size: 1.3em;
+    font-weight: bold;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+    animation: title-winner-glow 2s infinite alternate;
+}
+
+@keyframes title-winner-glow {
+    0% {
+        text-shadow: 0 0 5px rgba(255, 215, 0, 0.5);
+    }
+    100% {
+        text-shadow: 0 0 15px rgba(255, 215, 0, 0.8), 0 0 20px rgba(255, 215, 0, 0.4);
+    }
 }
 
 #ranking-list {
     list-style: none;
     padding: 0;
     margin: 10px 0 0 0;
+    /* フレックスボックスで逆順に表示するための設定 */
+    display: flex;
+    flex-direction: column;
+    /* 順位上位を上に表示 */
+    justify-content: flex-start;
 }
 
 .ranking-item {
@@ -615,60 +647,268 @@ button:hover {
     border-radius: 4px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     font-size: 12px;
+    width: 100%;
+    /* ランキングアイテムの位置を固定するための設定 */
+    transform-origin: center left;
 }
 
-.ranking-item .rank {
-    font-weight: bold;
-    color: #495057;
-    width: 30px;
-    flex-shrink: 0;
+/* ランキング表示のアニメーション - 下位（4位以降）用 */
+.ranking-item.hidden {
+    opacity: 0;
+    transform: translateX(-50px) translateY(20px);
 }
 
-.ranking-item .player-name {
-    flex-grow: 1;
-    padding: 0 5px;
-    color: #212529;
-    white-space: nowrap;
+.ranking-item.reveal {
+    animation: reveal-item 0.5s ease forwards;
+}
+
+@keyframes reveal-item {
+    0% {
+        opacity: 0;
+        transform: translateX(-50px) translateY(20px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateX(0) translateY(0);
+    }
+}
+
+/* TOP3のアニメーション - 上から下へ */
+.ranking-item.top-1.hidden,
+.ranking-item.top-2.hidden,
+.ranking-item.top-3.hidden {
+    opacity: 0;
+    transform: translateX(-50px) translateY(-20px);
+}
+
+.ranking-item.reveal-bronze {
+    animation: reveal-bronze 1s ease forwards;
+}
+
+.ranking-item.reveal-silver {
+    animation: reveal-silver 1.2s ease forwards;
+}
+
+.ranking-item.reveal-gold {
+    animation: reveal-gold 1.5s ease forwards;
+}
+
+@keyframes reveal-bronze {
+    0% {
+        opacity: 0;
+        transform: translateX(-50px) translateY(-20px);
+    }
+    40% {
+        opacity: 0.9;
+        transform: translateX(10px) translateY(5px);
+    }
+    70% {
+        transform: translateX(-5px) translateY(-2px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateX(0) translateY(0);
+        box-shadow: 0 0 15px rgba(205, 127, 50, 0.4);
+    }
+}
+
+@keyframes reveal-silver {
+    0% {
+        opacity: 0;
+        transform: translateX(-70px) translateY(-30px);
+    }
+    45% {
+        opacity: 0.9;
+        transform: translateX(15px) translateY(8px);
+    }
+    75% {
+        transform: translateX(-8px) translateY(-3px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateX(0) translateY(0);
+        box-shadow: 0 0 20px rgba(192, 192, 192, 0.5);
+    }
+}
+
+@keyframes reveal-gold {
+    0% {
+        opacity: 0;
+        transform: translateX(-100px) translateY(-50px);
+    }
+    10% {
+        opacity: 0.3;
+    }
+    50% {
+        opacity: 1;
+        transform: translateX(20px) translateY(10px);
+    }
+    65% {
+        transform: translateX(-10px) translateY(-5px);
+    }
+    80% {
+        transform: translateX(5px) translateY(2px);
+    }
+    90% {
+        transform: translateX(-2px) translateY(-1px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateX(0) translateY(0);
+        box-shadow: 0 0 30px rgba(255, 215, 0, 0.6);
+    }
+}
+
+/* 優勝者発表時のエフェクト */
+.winner-announced {
+    animation: winner-glow 2s forwards;
+    position: relative;
     overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 40%;
 }
 
-.ranking-item .answer-time {
-    color: #6c757d;
-    margin-right: 5px;
-    white-space: nowrap;
-    flex-shrink: 0;
+.winner-announced::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(
+        circle,
+        rgba(255, 215, 0, 0.1) 0%,
+        rgba(255, 215, 0, 0) 70%
+    );
+    animation: winner-pulse 3s ease-out infinite;
 }
 
-.ranking-item .earned-points {
-    color: #28a745;
-    font-weight: bold;
-    width: 40px;
-    text-align: right;
-    flex-shrink: 0;
+.winner-announced::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        90deg,
+        rgba(255, 215, 0, 0) 0%,
+        rgba(255, 215, 0, 0.2) 50%,
+        rgba(255, 215, 0, 0) 100%
+    );
+    animation: winner-shine 2.5s ease-in-out infinite;
 }
 
-/* 自分の結果のハイライト */
-.ranking-item.my-result {
-    background-color: #fff3cd;
-    border-left: 3px solid #ffc107;
+@keyframes winner-glow {
+    0% {
+        box-shadow: 0 0 5px rgba(255, 215, 0, 0.1);
+    }
+    100% {
+        box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
+    }
 }
 
-/* トップ3の装飾 */
-.ranking-item.top-1 {
-    background-color: #fff9db;
-    border-left: 3px solid #ffd700; /* 金 */
+@keyframes winner-pulse {
+    0% {
+        transform: scale(0.5);
+        opacity: 0.5;
+    }
+    50% {
+        opacity: 0.2;
+    }
+    100% {
+        transform: scale(1.0);
+        opacity: 0;
+    }
 }
 
-.ranking-item.top-2 {
-    background-color: #f8f9fa;
-    border-left: 3px solid #c0c0c0; /* 銀 */
+@keyframes winner-shine {
+    0% {
+        left: -100%;
+    }
+    50% {
+        left: 100%;
+    }
+    100% {
+        left: 100%;
+    }
 }
 
-.ranking-item.top-3 {
-    background-color: #fff4e6;
-    border-left: 3px solid #cd7f32; /* 銅 */
+/* 1位の特別強調表示 */
+.ranking-item.top-1.reveal-gold {
+    background-color: #fffaf0;
+    border-left: 4px solid #ffd700;
+    position: relative;
+    z-index: 2;
+    overflow: hidden;
+}
+
+.ranking-item.top-1.reveal-gold::after {
+    content: '👑';
+    position: absolute;
+    top: -15px;
+    left: -5px;
+    font-size: 24px;
+    animation: crown-drop 0.5s ease forwards 0.5s;
+    opacity: 0;
+    transform: translateY(-10px) rotate(-30deg);
+}
+
+.ranking-item.top-1.reveal-gold::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 50%;
+    height: 100%;
+    background: linear-gradient(
+        90deg,
+        rgba(255, 215, 0, 0) 0%,
+        rgba(255, 215, 0, 0.4) 50%,
+        rgba(255, 215, 0, 0) 100%
+    );
+    animation: gold-shine 1.5s ease-in-out 1.5s infinite;
+    z-index: -1;
+}
+
+@keyframes gold-shine {
+    0% {
+        left: -100%;
+    }
+    100% {
+        left: 200%;
+    }
+}
+
+@keyframes crown-drop {
+    0% {
+        opacity: 0;
+        transform: translateY(-10px) rotate(-30deg);
+    }
+    50% {
+        opacity: 1;
+        transform: translateY(5px) rotate(15deg);
+    }
+    75% {
+        transform: translateY(-2px) rotate(-5deg);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) rotate(0deg);
+    }
+}
+
+/* 結果なしの表示スタイル */
+.no-results {
+    text-align: center;
+    font-style: italic;
+    color: #666;
+    padding: 20px;
+    opacity: 0;
+    animation: fade-in 1s ease forwards;
+}
+
+@keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 /* メディアクエリ - 小さい画面用 */
@@ -994,4 +1234,62 @@ button:hover {
     100% {
         transform: translateX(100%);
     }
+}
+
+/* ランキングアイテムのスタイル */
+.ranking-item .rank {
+    font-weight: bold;
+    color: #495057;
+    width: 30px;
+    flex-shrink: 0;
+}
+
+.ranking-item .player-name {
+    flex-grow: 1;
+    padding: 0 5px;
+    color: #212529;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 40%;
+}
+
+.ranking-item .answer-time {
+    color: #6c757d;
+    margin-right: 5px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.ranking-item .earned-points {
+    color: #28a745;
+    font-weight: bold;
+    width: 40px;
+    text-align: right;
+    flex-shrink: 0;
+}
+
+/* 自分の結果のハイライト */
+.ranking-item.my-result {
+    background-color: #fff3cd;
+    border-left: 3px solid #ffc107;
+}
+
+/* トップ3の装飾 */
+.ranking-item.top-1 {
+    background-color: #fff9db;
+    border-left: 3px solid #ffd700; /* 金 */
+    margin-bottom: 15px; /* 他の順位との間隔を開ける */
+}
+
+.ranking-item.top-2 {
+    background-color: #f8f9fa;
+    border-left: 3px solid #c0c0c0; /* 銀 */
+    margin-bottom: 8px;
+}
+
+.ranking-item.top-3 {
+    background-color: #fff4e6;
+    border-left: 3px solid #cd7f32; /* 銅 */
+    margin-bottom: 8px;
 } 

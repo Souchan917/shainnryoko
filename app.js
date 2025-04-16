@@ -1082,8 +1082,27 @@ document.addEventListener('DOMContentLoaded', function() {
 
       // ランキング表示の処理
       if (gameState.showRanking && gameState.rankingStageId) {
-        // ランキングを表示
-        showRankingResults(gameState.rankingData || [], gameState.stageName || '不明なステージ');
+        console.log('ランキング表示を更新');
+        
+        // ランキングセクションを表示
+        if (resultsRanking) {
+          resultsRanking.classList.remove('hidden');
+        }
+        
+        // ランキングデータが存在する場合
+        if (gameState.rankingData) {
+          // ランキングを表示
+          showRankingResults(
+            { name: gameState.stageName || '不明なステージ' },
+            gameState.rankingData
+          );
+        } else {
+          console.log('ランキングデータがありません');
+          showRankingResults(
+            { name: gameState.stageName || '不明なステージ' },
+            []
+          );
+        }
       }
 
       // ゲーム開始時刻を設定（解答時間計算用）
@@ -1384,71 +1403,192 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // ランキング結果を表示する関数
-    function showRankingResults(rankings, stageName) {
-      if (!resultsRanking || !rankingList) return;
-      
+    function showRankingResults(stage, rankings) {
       // ランキングリストをクリア
+      const rankingList = document.getElementById('ranking-list');
+      const rankingTitle = document.getElementById('ranking-title');
+      
+      if (!rankingList || !rankingTitle) return;
+      
       rankingList.innerHTML = '';
       
-      // タイトルを設定
-      const rankingTitle = resultsRanking.querySelector('h3');
-      if (rankingTitle) {
-        rankingTitle.textContent = `「${stageName}」のランキング`;
-      }
+      // stageが文字列の場合とオブジェクトの場合の両方に対応
+      const stageName = typeof stage === 'string' ? stage : (stage && stage.name ? stage.name : '不明なステージ');
+      rankingTitle.textContent = `${stageName} ランキング`;
       
-      if (rankings.length === 0) {
-        // 正解者がいない場合
+      console.log('ランキング表示 - ステージ:', stageName, '- データ:', rankings);
+      
+      // 正解者がいない場合
+      if (!rankings || rankings.length === 0) {
         const noResultItem = document.createElement('li');
-        noResultItem.textContent = 'このステージの正解者はまだいません';
-        noResultItem.style.fontStyle = 'italic';
-        noResultItem.style.color = '#666';
+        noResultItem.className = 'no-results';
+        noResultItem.textContent = '正解者はまだいません';
         rankingList.appendChild(noResultItem);
-      } else {
-        // ランキングを表示
-        rankings.forEach((player, index) => {
-          const rankItem = document.createElement('li');
-          rankItem.className = 'ranking-item';
-          
-          // 順位を表示（1位、2位、3位...）
-          const rankSpan = document.createElement('span');
-          rankSpan.className = 'rank';
-          rankSpan.textContent = `${index + 1}位`;
-          
-          // プレイヤー名を表示
-          const nameSpan = document.createElement('span');
-          nameSpan.className = 'player-name';
-          nameSpan.textContent = player.playerName;
-          
-          // 解答時間を表示
-          const timeSpan = document.createElement('span');
-          timeSpan.className = 'answer-time';
-          timeSpan.textContent = `${player.answerTime.toFixed(2)}秒`;
-          
-          // 獲得ポイントを表示
-          const pointsSpan = document.createElement('span');
-          pointsSpan.className = 'earned-points';
-          pointsSpan.textContent = `+${player.pointsEarned}pt`;
-          
-          // 自分の結果の場合はハイライト
-          if (player.playerId === currentPlayer.id) {
-            rankItem.classList.add('my-result');
-          }
-          
-          // トップ3を強調
-          if (index < 3) {
-            rankItem.classList.add(`top-${index + 1}`);
-          }
-          
-          rankItem.appendChild(rankSpan);
-          rankItem.appendChild(nameSpan);
-          rankItem.appendChild(timeSpan);
-          rankItem.appendChild(pointsSpan);
-          rankingList.appendChild(rankItem);
-        });
+        return;
       }
       
-      // ランキング表示を表示
-      resultsRanking.classList.remove('hidden');
+      // ランキングアイテムを作成しておく（表示はまだしない）
+      const rankingItems = [];
+      
+      // ランキングを作成
+      rankings.forEach((result, index) => {
+        const rank = index + 1;
+        const listItem = document.createElement('li');
+        listItem.className = 'ranking-item';
+        
+        // 上位3位にはクラスを追加
+        if (rank === 1) {
+          listItem.classList.add('top-1');
+          listItem.setAttribute('data-rank', '1');
+          // 1位は一番上に配置
+          listItem.style.order = '1';
+        }
+        else if (rank === 2) {
+          listItem.classList.add('top-2');
+          listItem.setAttribute('data-rank', '2');
+          // 2位は2番目に配置
+          listItem.style.order = '2';
+        }
+        else if (rank === 3) {
+          listItem.classList.add('top-3');
+          listItem.setAttribute('data-rank', '3');
+          // 3位は3番目に配置
+          listItem.style.order = '3';
+        } else {
+          listItem.setAttribute('data-rank', rank);
+          // 4位以降は順位に応じて下に配置
+          listItem.style.order = String(rank);
+        }
+        
+        // 自分の結果にはクラスを追加
+        if (result.playerId === currentPlayer.id) {
+          listItem.classList.add('my-result');
+        }
+        
+        // アニメーション用のクラスを追加
+        listItem.classList.add('hidden');
+        
+        // 内容を構築
+        listItem.innerHTML = `
+          <div class="rank">${rank}位</div>
+          <div class="player-name">${result.playerName}</div>
+          <div class="answer-time">${result.answerTime.toFixed(2)}秒</div>
+          <div class="earned-points">+${result.pointsEarned}pt</div>
+        `;
+        
+        // 配列に追加
+        rankingItems.push({
+          element: listItem,
+          rank: rank
+        });
+      });
+      
+      // 演出のために1位、2位、3位とそれ以外に分ける
+      const firstPlace = rankingItems.find(item => item.rank === 1);
+      const secondPlace = rankingItems.find(item => item.rank === 2);
+      const thirdPlace = rankingItems.find(item => item.rank === 3);
+      const otherPlaces = rankingItems.filter(item => item.rank > 3);
+      
+      // ランキングタイトルを演出的に変更
+      if (rankingTitle) {
+        rankingTitle.textContent = `${stageName} ランキング発表`;
+        rankingTitle.classList.add('title-announcing');
+      }
+      
+      // 開始の演出
+      updateGameStatus('ランキング発表を開始します...');
+      
+      // 全アイテムをDOMに追加（表示はhiddenのまま）
+      // DOM配置とアニメーションを分離して、順位の配置を正しく行う
+      rankingItems.forEach(item => {
+        rankingList.appendChild(item.element);
+      });
+      
+      // アニメーションのタイミングを設定
+      let delay = 800; // 開始時の遅延（ミリ秒） - 演出のため長めに
+      const itemDelay = 250; // 通常順位のアイテム間の遅延 - 少し長く
+      const specialDelay = 1000; // 特別な順位（TOP3）の間の遅延 - よりドラマチックに
+      
+      // 下位から順に表示
+      updateGameStatus('まずは下位から発表します...');
+      
+      // 下位からの表示前に少し待つ
+      setTimeout(() => {
+        // 下位から順に表示（ランキングの降順 - 下位から上位へ）
+        // 数値の大きい順に並べる
+        const sortedOthers = [...otherPlaces].sort((a, b) => b.rank - a.rank);
+        
+        sortedOthers.forEach((item, index) => {
+          setTimeout(() => {
+            item.element.classList.remove('hidden');
+            item.element.classList.add('reveal');
+            
+            // 最後の項目表示後に少し間を開ける
+            if (index === sortedOthers.length - 1) {
+              updateGameStatus('続いて上位3名の発表です...');
+            }
+          }, index * itemDelay);
+        });
+      }, delay);
+      
+      // 次に3位を表示する準備（少し間を空ける）
+      delay += (otherPlaces.length * itemDelay) + 1500;
+      
+      // TOP3を順番に表示する（3位→2位→1位）
+      if (thirdPlace) {
+        setTimeout(() => {
+          // 表示する時に効果音を鳴らしたりする場合はここに追加
+          updateGameStatus('🥉 3位発表！');
+          setTimeout(() => {
+            document.querySelector('[data-rank="3"]').classList.remove('hidden');
+            document.querySelector('[data-rank="3"]').classList.add('reveal-bronze');
+          }, 500); // 効果音のための少しの遅延
+        }, delay);
+        delay += specialDelay;
+      }
+      
+      if (secondPlace) {
+        setTimeout(() => {
+          updateGameStatus('🥈 2位発表！');
+          setTimeout(() => {
+            document.querySelector('[data-rank="2"]').classList.remove('hidden');
+            document.querySelector('[data-rank="2"]').classList.add('reveal-silver');
+          }, 500);
+        }, delay);
+        delay += specialDelay;
+      }
+      
+      // 1位の発表前に少し長めの間（ドラムロール効果）
+      delay += 800;
+      
+      if (firstPlace) {
+        // 1位発表前のカウントダウン効果
+        setTimeout(() => {
+          updateGameStatus('そして栄えある優勝者は...');
+        }, delay);
+        
+        // カウントダウンを短縮（約1秒に）
+        setTimeout(() => { updateGameStatus('3...'); }, delay + 300);
+        setTimeout(() => { updateGameStatus('2...'); }, delay + 600);
+        setTimeout(() => { updateGameStatus('1...'); }, delay + 900);
+        
+        // 1位の発表（特別な演出付き）
+        setTimeout(() => {
+          document.querySelector('[data-rank="1"]').classList.remove('hidden');
+          document.querySelector('[data-rank="1"]').classList.add('reveal-gold');
+          updateGameStatus('🏆 優勝者発表！おめでとうございます！🎉');
+          
+          // 背景でキラキラエフェクトなどを表示したい場合はここで追加
+          const resultSection = document.getElementById('results-ranking');
+          resultSection.classList.add('winner-announced');
+          
+          // ランキングタイトルも更新
+          if (rankingTitle) {
+            rankingTitle.textContent = `${stageName} 優勝者：${firstPlace.element.querySelector('.player-name').textContent}`;
+            rankingTitle.classList.add('title-winner-announced');
+          }
+        }, delay + 1200);
+      }
     }
 
     // ヒント購入ボタンのイベントリスナー
@@ -1904,8 +2044,27 @@ document.addEventListener('DOMContentLoaded', function() {
 
       // ランキング表示の処理
       if (gameState.showRanking && gameState.rankingStageId) {
-        // ランキングを表示
-        showRankingResults(gameState.rankingData || [], gameState.stageName || '不明なステージ');
+        console.log('ランキング表示を更新');
+        
+        // ランキングセクションを表示
+        if (resultsRanking) {
+          resultsRanking.classList.remove('hidden');
+        }
+        
+        // ランキングデータが存在する場合
+        if (gameState.rankingData) {
+          // ランキングを表示
+          showRankingResults(
+            { name: gameState.stageName || '不明なステージ' },
+            gameState.rankingData
+          );
+        } else {
+          console.log('ランキングデータがありません');
+          showRankingResults(
+            { name: gameState.stageName || '不明なステージ' },
+            []
+          );
+        }
       }
 
       // ゲーム開始時刻を設定（解答時間計算用）
