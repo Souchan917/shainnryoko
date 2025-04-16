@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', function() {
         id: 'stage1',
         name: 'ステージ1',
         correctAnswer: ['箱根', 'はこね', 'ハコネ'],
-        imagePath: 'puzzle1.png',
+        imagePath: 'images/puzzles/puzzle1.png',
         pointReward: 10,
         hint: 'フルーツの王様とも呼ばれています。赤い色が特徴的です。',
         hintCost: 5  // ヒントを見るのに必要なポイント
@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', function() {
         id: 'stage2',
         name: 'ステージ2',
         correctAnswer: ['ばなな', 'バナナ', 'banana'],
-        imagePath: 'puzzle2.png',
+        imagePath: 'images/puzzles/puzzle2.png',
         pointReward: 20,
         hint: '黄色い曲がった形が特徴的なフルーツです。猿も大好きです。',
         hintCost: 7  // ヒントを見るのに必要なポイント
@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', function() {
         id: 'stage3',
         name: 'ステージ3',
         correctAnswer: ['みかん', 'ミカン', 'orange', 'オレンジ'],
-        imagePath: 'puzzle3.png',
+        imagePath: 'images/puzzles/puzzle3.png',
         pointReward: 30,
         hint: '冬になると食べたくなる、オレンジ色の柑橘系フルーツです。',
         hintCost: 10  // ヒントを見るのに必要なポイント
@@ -43,7 +43,7 @@ document.addEventListener('DOMContentLoaded', function() {
         id: 'stage4',
         name: 'ステージ4',
         correctAnswer: ['ぶどう', 'ブドウ', 'grape', 'グレープ'],
-        imagePath: 'puzzle4.png',
+        imagePath: 'images/puzzles/puzzle4.png',
         pointReward: 40,
         hint: '紫色の小さな実が房になっています。ワインの原料としても有名です。',
         hintCost: 12
@@ -52,7 +52,7 @@ document.addEventListener('DOMContentLoaded', function() {
         id: 'stage5',
         name: 'ステージ5',
         correctAnswer: ['すいか', 'スイカ', 'watermelon', 'ウォーターメロン'],
-        imagePath: 'puzzle5.png',
+        imagePath: 'images/puzzles/puzzle5.png',
         pointReward: 50,
         hint: '夏に食べる大きな緑色のフルーツ。中身は赤くて種があります。',
         hintCost: 15
@@ -61,7 +61,7 @@ document.addEventListener('DOMContentLoaded', function() {
         id: 'stage6',
         name: 'ステージ6',
         correctAnswer: ['いちご', 'イチゴ', 'strawberry', 'ストロベリー'],
-        imagePath: 'puzzle6.png',
+        imagePath: 'images/puzzles/puzzle6.png',
         pointReward: 60,
         hint: '春に収穫される赤い小さなフルーツで、表面に小さな種があります。',
         hintCost: 18
@@ -70,7 +70,7 @@ document.addEventListener('DOMContentLoaded', function() {
         id: 'stage7',
         name: 'ステージ7',
         correctAnswer: ['もも', 'モモ', 'peach', 'ピーチ'],
-        imagePath: 'puzzle7.png',
+        imagePath: 'images/puzzles/puzzle7.png',
         pointReward: 70,
         hint: 'ピンク色の柔らかい果肉と甘い香りが特徴です。表面は産毛があります。',
         hintCost: 20
@@ -79,7 +79,7 @@ document.addEventListener('DOMContentLoaded', function() {
         id: 'stage8',
         name: 'ステージ8',
         correctAnswer: ['おかし', 'お菓子', 'オカシ'],
-        imagePath: 'puzzle8.png',
+        imagePath: 'images/puzzles/puzzle8.png',
         pointReward: 80,
         hint: '熱帯地域で育つ黄色い果肉と硬い外皮が特徴的なフルーツです。',
         hintCost: 22
@@ -88,7 +88,7 @@ document.addEventListener('DOMContentLoaded', function() {
         id: 'stage9',
         name: 'ステージ9',
         correctAnswer: ['キウイ', 'きうい', 'kiwi', 'キウイフルーツ'],
-        imagePath: 'puzzle9.png',
+        imagePath: 'images/puzzles/puzzle9.png',
         pointReward: 90,
         hint: '茶色の毛が生えた皮と、中の緑色の果肉が特徴です。酸味があります。',
         hintCost: 25
@@ -97,7 +97,7 @@ document.addEventListener('DOMContentLoaded', function() {
         id: 'stage10',
         name: 'ステージ10',
         correctAnswer: ['マンゴー', 'まんごー', 'mango'],
-        imagePath: 'puzzle10.png',
+        imagePath: 'images/puzzles/puzzle10.png',
         pointReward: 100,
         hint: '南国のフルーツで、オレンジ色の甘い果肉があります。石のような大きな種があります。',
         hintCost: 28
@@ -106,7 +106,7 @@ document.addEventListener('DOMContentLoaded', function() {
         id: 'stage11',
         name: 'ステージ11',
         correctAnswer: ['さくらんぼ', 'サクランボ', 'cherry', 'チェリー'],
-        imagePath: 'puzzle11.png',
+        imagePath: 'images/puzzles/puzzle11.png',
         pointReward: 110,
         hint: '小さな赤い実で、長い茎がついています。ケーキの飾りとしても使われます。',
         hintCost: 30
@@ -115,7 +115,7 @@ document.addEventListener('DOMContentLoaded', function() {
         id: 'stage12',
         name: 'ステージ12',
         correctAnswer: ['レモン', 'れもん', 'lemon'],
-        imagePath: 'puzzle12.png',
+        imagePath: 'images/puzzles/puzzle12.png',
         pointReward: 120,
         hint: '黄色い皮と酸っぱい味が特徴的な柑橘系のフルーツです。',
         hintCost: 32
@@ -124,7 +124,7 @@ document.addEventListener('DOMContentLoaded', function() {
         id: 'stage13',
         name: 'ステージ13',
         correctAnswer: ['ライチ', 'らいち', 'lychee'],
-        imagePath: 'puzzle13.png',
+        imagePath: 'images/puzzles/puzzle13.png',
         pointReward: 130,
         hint: '赤い鱗状の皮に覆われ、中は白い果肉です。中国原産のフルーツです。',
         hintCost: 35
@@ -133,7 +133,7 @@ document.addEventListener('DOMContentLoaded', function() {
         id: 'stage14',
         name: 'ステージ14',
         correctAnswer: ['アボカド', 'あぼかど', 'avocado'],
-        imagePath: 'puzzle14.png',
+        imagePath: 'images/puzzles/puzzle14.png',
         pointReward: 140,
         hint: '緑色の果肉と大きな種を持つ、脂質の多いフルーツです。料理に使われることも多いです。',
         hintCost: 38
@@ -142,7 +142,7 @@ document.addEventListener('DOMContentLoaded', function() {
         id: 'stage15',
         name: 'ステージ15',
         correctAnswer: ['ドラゴンフルーツ', 'どらごんふるーつ', 'dragonfruit', 'ピタヤ', 'ぴたや'],
-        imagePath: 'puzzle15.png',
+        imagePath: 'images/puzzles/puzzle15.png',
         pointReward: 150,
         hint: 'ピンクの外皮と白または赤い果肉に黒い種が散らばっている、エキゾチックなフルーツです。',
         hintCost: 40
