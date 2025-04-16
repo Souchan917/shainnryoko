@@ -1501,4 +1501,13 @@ button:hover {
         opacity: 1;
         transform: translateX(0);
     }
+}
+
+/* 正解画像のスタイル */
+.answer-image {
+    border: 4px solid #4CAF50;
+    box-shadow: 0 0 10px rgba(76, 175, 80, 0.7);
+    transition: all 0.3s ease;
+    max-width: 100%;
+    height: auto;
 } 
