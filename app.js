@@ -536,66 +536,75 @@ document.addEventListener('DOMContentLoaded', function() {
   
     // プレイヤーリストを更新する関数
     function updatePlayersList() {
-      playersCollection.get()
-        .then(snapshot => {
-          // リストをクリア
-          connectedPlayersList.innerHTML = '';
-          
-          if (!snapshot.empty) {
-            // プレイヤー一覧を表示
-            snapshot.forEach(doc => {
-              const player = doc.data();
-              const listItem = document.createElement('li');
+      // 既存のリスナーがあれば解除
+      if (window.unsubscribePlayersListener) {
+        window.unsubscribePlayersListener();
+      }
+      
+      // onSnapshotを使ってリアルタイム監視に変更
+      window.unsubscribePlayersListener = playersCollection.onSnapshot(snapshot => {
+        // リストをクリア
+        connectedPlayersList.innerHTML = '';
+        
+        if (!snapshot.empty) {
+          // プレイヤー一覧を表示
+          snapshot.forEach(doc => {
+            const player = doc.data();
+            const listItem = document.createElement('li');
+            
+            // プレイヤー名とポイント
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'player-name';
+            nameSpan.textContent = player.name;
+            
+            const pointsSpan = document.createElement('span');
+            pointsSpan.className = 'player-points-list';
+            pointsSpan.textContent = `${player.points || 0}pt`;
+            
+            listItem.appendChild(nameSpan);
+            listItem.appendChild(pointsSpan);
+            
+            // 解答済みのプレイヤーにはステータスを表示
+            if (player.answered) {
+              const statusSpan = document.createElement('span');
+              statusSpan.className = 'player-status';
               
-              // プレイヤー名とポイント
-              const nameSpan = document.createElement('span');
-              nameSpan.className = 'player-name';
-              nameSpan.textContent = player.name;
-              
-              const pointsSpan = document.createElement('span');
-              pointsSpan.className = 'player-points-list';
-              pointsSpan.textContent = `${player.points || 0}pt`;
-              
-              listItem.appendChild(nameSpan);
-              listItem.appendChild(pointsSpan);
-              
-              // 解答済みのプレイヤーにはステータスを表示
-              if (player.answered) {
-                const statusSpan = document.createElement('span');
-                statusSpan.className = 'player-status';
-                
-                if (player.answerCorrect) {
-                  statusSpan.textContent = '正解';
-                  statusSpan.classList.add('correct');
-                } else {
-                  statusSpan.textContent = '不正解';
-                  statusSpan.classList.add('incorrect');
-                }
-                
-                listItem.appendChild(statusSpan);
+              if (player.answerCorrect) {
+                statusSpan.textContent = '正解';
+                statusSpan.classList.add('correct');
+              } else {
+                statusSpan.textContent = '不正解';
+                statusSpan.classList.add('incorrect');
               }
               
-              connectedPlayersList.appendChild(listItem);
-            });
-          } else {
-            // プレイヤーがいない場合
-            const listItem = document.createElement('li');
-            listItem.textContent = '接続中のプレイヤーはいません';
-            listItem.style.fontStyle = 'italic';
-            listItem.style.color = '#666';
+              listItem.appendChild(statusSpan);
+            }
+            
             connectedPlayersList.appendChild(listItem);
-          }
-        })
-        .catch(error => {
-          console.error('プレイヤーリスト取得エラー:', error);
-        });
+          });
+        } else {
+          // プレイヤーがいない場合
+          const listItem = document.createElement('li');
+          listItem.textContent = '接続中のプレイヤーはいません';
+          listItem.style.fontStyle = 'italic';
+          listItem.style.color = '#666';
+          connectedPlayersList.appendChild(listItem);
+        }
+      }, error => {
+        console.error('プレイヤーリスト監視エラー:', error);
+      });
     }
     
     // 解答状況を更新する関数
     function updateAnswersList() {
-      // 解答を取得し、回答時間でソート
-      answersCollection.orderBy('answeredAt', 'desc').get()
-        .then(snapshot => {
+      // 既存のリスナーがあれば解除
+      if (window.unsubscribeAnswersListener) {
+        window.unsubscribeAnswersListener();
+      }
+      
+      // onSnapshotを使用してリアルタイム監視に変更
+      window.unsubscribeAnswersListener = answersCollection.orderBy('answeredAt', 'desc')
+        .onSnapshot(snapshot => {
           // リストをクリア
           playerAnswersList.innerHTML = '';
           
@@ -664,9 +673,8 @@ document.addEventListener('DOMContentLoaded', function() {
             listItem.style.color = '#666';
             playerAnswersList.appendChild(listItem);
           }
-        })
-        .catch(error => {
-          console.error('解答リスト取得エラー:', error);
+        }, error => {
+          console.error('解答リスト監視エラー:', error);
         });
     }
   
@@ -971,24 +979,57 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // すべての解答を削除する関数
     function deleteAllAnswers() {
-      return answersCollection.get()
-        .then(snapshot => {
-          const batch = db.batch();
+      // リアルタイムリスナーを使用して一度に全ドキュメントを取得
+      return new Promise((resolve, reject) => {
+        // 一時的なリスナーを設定して全データを取得
+        const unsubscribe = answersCollection.onSnapshot(snapshot => {
+          unsubscribe(); // 即座にリスナーを解除
           
+          if (snapshot.empty) {
+            console.log('削除する解答がありません');
+            resolve();
+            return;
+          }
+          
+          // バッチ処理で削除
+          const batch = db.batch();
           snapshot.forEach(doc => {
             batch.delete(doc.ref);
           });
           
-          return batch.commit();
+          // バッチ実行
+          batch.commit()
+            .then(() => {
+              console.log(`${snapshot.size}件の解答を削除しました`);
+              resolve();
+            })
+            .catch(error => {
+              console.error('解答削除エラー:', error);
+              reject(error);
+            });
+        }, error => {
+          console.error('解答データ取得エラー:', error);
+          reject(error);
         });
+      });
     }
     
     // すべてのプレイヤーの解答状態をリセットする関数
     function resetAllPlayerAnswers() {
-      return playersCollection.get()
-        .then(snapshot => {
-          const batch = db.batch();
+      // リアルタイムリスナーを使用して一度に全ドキュメントを取得
+      return new Promise((resolve, reject) => {
+        // 一時的なリスナーを設定して全データを取得
+        const unsubscribe = playersCollection.onSnapshot(snapshot => {
+          unsubscribe(); // 即座にリスナーを解除
           
+          if (snapshot.empty) {
+            console.log('リセットするプレイヤーがいません');
+            resolve();
+            return;
+          }
+          
+          // バッチ処理でリセット
+          const batch = db.batch();
           snapshot.forEach(doc => {
             batch.update(doc.ref, {
               answered: false,
@@ -996,8 +1037,21 @@ document.addEventListener('DOMContentLoaded', function() {
             });
           });
           
-          return batch.commit();
+          // バッチ実行
+          batch.commit()
+            .then(() => {
+              console.log(`${snapshot.size}人のプレイヤーの解答状態をリセットしました`);
+              resolve();
+            })
+            .catch(error => {
+              console.error('プレイヤー解答状態リセットエラー:', error);
+              reject(error);
+            });
+        }, error => {
+          console.error('プレイヤーデータ取得エラー:', error);
+          reject(error);
         });
+      });
     }
   
     // マスター側：リセット
@@ -2006,46 +2060,53 @@ document.addEventListener('DOMContentLoaded', function() {
           return;
         }
         
-        // 接続中のプレイヤー一覧を取得
-        const playersSnapshot = await playersCollection.get();
-        if (playersSnapshot.empty) {
-          updateGameStatus('付与対象のプレイヤーがいません');
-          return;
-        }
-        
-        // 各プレイヤーにポイントを付与
-        const batch = db.batch();
-        let playerCount = 0;
-        
-        playersSnapshot.forEach(doc => {
-          const playerData = doc.data();
-          // マスターは除外
-          if (playerData.isMaster) return;
+        // 一時的なリスナーを使用して一度だけプレイヤー一覧を取得
+        const unsubscribe = playersCollection.onSnapshot(async snapshot => {
+          // 即座にリスナーを解除
+          unsubscribe();
           
-          // ポイント付与のバッチ処理を追加
-          batch.update(playersCollection.doc(doc.id), {
-            points: firebase.firestore.FieldValue.increment(pointsAmount),
-            lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+          if (snapshot.empty) {
+            updateGameStatus('付与対象のプレイヤーがいません');
+            return;
+          }
+          
+          // 各プレイヤーにポイントを付与
+          const batch = db.batch();
+          let playerCount = 0;
+          
+          snapshot.forEach(doc => {
+            const playerData = doc.data();
+            // マスターは除外
+            if (playerData.isMaster) return;
+            
+            // ポイント付与のバッチ処理を追加
+            batch.update(playersCollection.doc(doc.id), {
+              points: firebase.firestore.FieldValue.increment(pointsAmount),
+              lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            playerCount++;
           });
-          playerCount++;
-        });
-        
-        // バッチ処理を実行
-        if (playerCount > 0) {
-          await batch.commit();
-          console.log(`${playerCount}人のプレイヤーに${pointsAmount}ポイントを付与しました`);
-          updateGameStatus(`全プレイヤーに${pointsAmount}ポイントを付与しました`);
           
-          // ポイント付与ログをFirestoreに記録
-          await gameStateCollection.doc('pointDistributionLog').set({
-            amount: pointsAmount,
-            playerCount: playerCount,
-            distributedAt: firebase.firestore.FieldValue.serverTimestamp(),
-            distributedBy: 'master'
-          }, { merge: true });
-        } else {
-          updateGameStatus('付与対象のプレイヤーがいません');
-        }
+          // バッチ処理を実行
+          if (playerCount > 0) {
+            await batch.commit();
+            console.log(`${playerCount}人のプレイヤーに${pointsAmount}ポイントを付与しました`);
+            updateGameStatus(`全プレイヤーに${pointsAmount}ポイントを付与しました`);
+            
+            // ポイント付与ログをFirestoreに記録
+            await gameStateCollection.doc('pointDistributionLog').set({
+              amount: pointsAmount,
+              playerCount: playerCount,
+              distributedAt: firebase.firestore.FieldValue.serverTimestamp(),
+              distributedBy: 'master'
+            }, { merge: true });
+          } else {
+            updateGameStatus('付与対象のプレイヤーがいません');
+          }
+        }, error => {
+          console.error('プレイヤーデータ取得エラー:', error);
+          updateGameStatus('プレイヤーデータの取得に失敗しました');
+        });
         
       } catch (error) {
         console.error('ポイント付与エラー:', error);
@@ -2061,62 +2122,81 @@ document.addEventListener('DOMContentLoaded', function() {
       if (savedPlayer && savedPlayer.id && savedPlayer.name) {
         console.log('保存されたプレイヤー情報を復元:', savedPlayer.name);
         
-        // Firestoreからプレイヤー情報を確認・復元
-        playersCollection.doc(savedPlayer.id).get()
-          .then(doc => {
-            if (doc.exists) {
-              // プレイヤー情報があれば復元
-              const playerData = doc.data();
-              
-              // 現在のプレイヤー情報を更新
-              currentPlayer = {
-                ...playerData,
-                isActive: true,
-                lastLogin: firebase.firestore.FieldValue.serverTimestamp()
-              };
-              
-              // Firestoreの情報を更新
-              return playersCollection.doc(savedPlayer.id).update({
-                isActive: true,
-                lastLogin: firebase.firestore.FieldValue.serverTimestamp()
-              });
-            } else {
-              // プレイヤー情報がなければ新規作成
-              console.log('保存されたIDのプレイヤーが見つかりません。新規作成します:', savedPlayer.id);
-              
-              // プレイヤー情報を作成
-              currentPlayer = {
-                id: savedPlayer.id,
-                name: savedPlayer.name,
-                isActive: true,
-                joinedAt: firebase.firestore.FieldValue.serverTimestamp(),
-                lastLogin: firebase.firestore.FieldValue.serverTimestamp(),
-                answered: false,
-                answerCorrect: false,
-                points: savedPlayer.points || POINTS_CONFIG.initial,
-                stageId: null
-              };
-              
-              // Firestoreに新規プレイヤー情報を保存
-              return playersCollection.doc(savedPlayer.id).set(currentPlayer);
-            }
-          })
-          .then(() => {
-            // プレイヤー表示を同期
-            syncPlayerDisplay();
+        // リターン値を保持する変数
+        let sessionRestored = false;
+        
+        // onSnapshotを使用して一回限りのリスナーを設定
+        const unsubscribe = playersCollection.doc(savedPlayer.id).onSnapshot(doc => {
+          // 即座にリスナーを解除（一回だけ取得）
+          unsubscribe();
+          
+          // セッション復元処理
+          if (doc.exists) {
+            // プレイヤー情報があれば復元
+            const playerData = doc.data();
             
-            // プレイヤー画面に遷移
-            showScreen('player-panel');
+            // 現在のプレイヤー情報を更新
+            currentPlayer = {
+              ...playerData,
+              isActive: true,
+              lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+            };
             
-            // ポイントのリアルタイムリスナーを開始
-            startPlayerPointsListener();
+            // Firestoreの情報を更新
+            playersCollection.doc(savedPlayer.id).update({
+              isActive: true,
+              lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+            }).then(() => {
+              // プレイヤー表示を同期
+              syncPlayerDisplay();
+              
+              // プレイヤー画面に遷移
+              showScreen('player-panel');
+              
+              // ポイントのリアルタイムリスナーを開始
+              startPlayerPointsListener();
+              
+              console.log('プレイヤーセッションを自動復元しました:', currentPlayer.name);
+            }).catch(error => {
+              console.error('プレイヤー情報の更新に失敗:', error);
+            });
+          } else {
+            // プレイヤー情報がなければ新規作成
+            console.log('保存されたIDのプレイヤーが見つかりません。新規作成します:', savedPlayer.id);
             
-            console.log('プレイヤーセッションを自動復元しました:', currentPlayer.name);
-          })
-          .catch(error => {
-            console.error('プレイヤーセッションの自動復元に失敗:', error);
-            // エラーが発生した場合は登録画面のままにする
-          });
+            // プレイヤー情報を作成
+            currentPlayer = {
+              id: savedPlayer.id,
+              name: savedPlayer.name,
+              isActive: true,
+              joinedAt: firebase.firestore.FieldValue.serverTimestamp(),
+              lastLogin: firebase.firestore.FieldValue.serverTimestamp(),
+              answered: false,
+              answerCorrect: false,
+              points: savedPlayer.points || POINTS_CONFIG.initial,
+              stageId: null
+            };
+            
+            // Firestoreに新規プレイヤー情報を保存
+            playersCollection.doc(savedPlayer.id).set(currentPlayer).then(() => {
+              // プレイヤー表示を同期
+              syncPlayerDisplay();
+              
+              // プレイヤー画面に遷移
+              showScreen('player-panel');
+              
+              // ポイントのリアルタイムリスナーを開始
+              startPlayerPointsListener();
+              
+              console.log('新規プレイヤー情報を作成して自動復元しました:', currentPlayer.name);
+            }).catch(error => {
+              console.error('新規プレイヤー情報の作成に失敗:', error);
+            });
+          }
+        }, error => {
+          console.error('プレイヤー情報取得エラー:', error);
+          // エラー時は登録画面のままにする
+        });
         
         return true;
       }

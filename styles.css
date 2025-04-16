@@ -133,21 +133,67 @@ button:hover {
 }
 
 .player-info {
-    background-color: #e8f5e9;
-    padding: 8px 10px;
-    border-radius: 4px;
+    background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
+    padding: 3px 15px;
+    border-radius: 12px;
     margin-bottom: 15px;
     font-weight: bold;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    position: relative;
+    overflow: hidden;
+    width: 100%;
 }
 
-.player-info p {
-    margin: 3px 0;
+.player-info::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(to right, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0));
+    z-index: 1;
+}
+
+/* プレイヤーヘッダー（名前とポイントの1行表示） */
+.player-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 1.8em;
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    line-height: 1.2;
+}
+
+/* プレイヤー名表示（左側） */
+.player-name-display {
+    font-weight: bold;
+    color: #1b5e20;
+    text-align: left;
+    max-width: 60%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-shadow: 0 1px 1px rgba(255, 255, 255, 0.5);
+}
+
+/* ポイント表示（右側） */
+.player-points-display {
+    font-weight: bold;
+    color: #1b5e20;
+    text-align: right;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
 }
 
 #player-points {
     font-weight: bold;
-    color: #4CAF50;
-    font-size: 1.1em;
+    color: #2E7D32;
+    margin-right: 2px;
 }
 
 /* ポイント更新アニメーション */
