@@ -1505,9 +1505,19 @@ button:hover {
 
 /* 正解画像のスタイル */
 .answer-image {
-    border: 4px solid #4CAF50;
-    box-shadow: 0 0 10px rgba(76, 175, 80, 0.7);
+    border: 6px solid #4CAF50;
+    box-shadow: 0 0 15px rgba(76, 175, 80, 0.8);
     transition: all 0.3s ease;
     max-width: 100%;
     height: auto;
+    animation: answer-glow 1.5s infinite alternate;
+}
+
+@keyframes answer-glow {
+    from {
+        box-shadow: 0 0 15px rgba(76, 175, 80, 0.8);
+    }
+    to {
+        box-shadow: 0 0 25px rgba(76, 175, 80, 1);
+    }
 } 
