@@ -51,7 +51,7 @@ document.addEventListener('DOMContentLoaded', function() {
       stage5: {
         id: 'stage5',
         name: 'ステージ5',
-        correctAnswer: ['すいか', 'スイカ', 'watermelon', 'ウォーターメロン'],
+        correctAnswer: ['すもももももももものうち', 'スモモモモモモモモノウチ', '李も桃も桃の内'],
         imagePath: 'images/puzzles/puzzle5.png',
         pointReward: 50,
         hint: '夏に食べる大きな緑色のフルーツ。中身は赤くて種があります。',
