@@ -42,7 +42,7 @@ document.addEventListener('DOMContentLoaded', function() {
       stage4: {
         id: 'stage4',
         name: 'ステージ4',
-        correctAnswer: ['ぶどう', 'ブドウ', 'grape', 'グレープ'],
+        correctAnswer: ['すもももももももものうち', 'スモモモモモモモモノウチ', '李も桃も桃の内'],
         imagePath: 'images/puzzles/puzzle4.png',
         pointReward: 40,
         hint: '紫色の小さな実が房になっています。ワインの原料としても有名です。',
