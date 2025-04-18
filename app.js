@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const gameStateCollection = db.collection('gameState');
     const playersCollection = db.collection('players');
     const answersCollection = db.collection('answers');
+    const hintsCollection = db.collection('hints');
     
     // ステージ設定
     const STAGES = {
@@ -171,6 +172,15 @@ document.addEventListener('DOMContentLoaded', function() {
       bonusPerSecond: 0.1
     };
     
+    // ランキング上位者への追加ポイント設定
+    const RANKING_BONUS_POINTS = {
+      1: 50, // 1位
+      2: 40, // 2位
+      3: 30, // 3位
+      4: 20, // 4位
+      5: 10  // 5位
+    };
+    
     // ユーティリティ関数 - データ管理 //
     
     // ローカルストレージへの保存
@@ -291,10 +301,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const goToMasterBtn = document.getElementById('go-to-master-btn');
     const displayPlayerName = document.getElementById('display-player-name');
     const playerPointsDisplay = document.getElementById('player-points');
-    const startGameBtn = document.getElementById('start-game');
-    const showResultsBtn = document.getElementById('show-results'); // 結果発表ボタン
+    const startGameBtn = document.getElementById('start-game'); // ゲームスタートボタン
     const showAnswerBtn = document.getElementById('show-answer'); // 正解表示ボタン
-    const resetGameBtn = document.getElementById('reset-game');
+    const showTotalRankingBtn = document.getElementById('show-total-ranking'); // 途中経過発表ボタン
+    const showResultsBtn = document.getElementById('show-results'); // 結果発表ボタン
+    const resetGameBtn = document.getElementById('reset-game'); // リセットボタン
     const imageContainer = document.getElementById('image-container');
     const answerImageContainer = document.getElementById('answer-image-container'); // 正解画像コンテナ
     const statusMessage = document.getElementById('status-message') || document.createElement('div'); // ステータスメッセージ要素がない場合の対策
@@ -1168,7 +1179,7 @@ document.addEventListener('DOMContentLoaded', function() {
         count--;
         
         // カウントダウン更新
-        if (count > 0) {
+        if (count > 1) {
           // 数字を更新してアニメーションをリセット
           countdownNumber.textContent = count;
           countdownOverlay.classList.remove('counting');
@@ -1178,6 +1189,75 @@ document.addEventListener('DOMContentLoaded', function() {
           
           void countdownOverlay.offsetWidth; // リフロー強制
           countdownOverlay.classList.add('counting');
+          
+          // カウントダウン効果音を再生（オプション）
+          // new Audio('countdown-beep.mp3').play().catch(e => console.log('効果音再生エラー:', e));
+        } else if (count === 1) {
+          // 1の表示
+          countdownNumber.textContent = count;
+          countdownOverlay.classList.remove('counting');
+          
+          // 現在のカウント数をdata属性に設定（スタイル切り替え用）
+          countdownOverlay.setAttribute('data-count', count);
+          
+          void countdownOverlay.offsetWidth; // リフロー強制
+          countdownOverlay.classList.add('counting');
+          
+          // ここで問題画像を表示する処理を追加
+          console.log("カウントダウン1表示時に問題画像を表示します");
+          
+          // Firestoreから現在のゲーム状態を取得
+          gameStateCollection.doc('current').get().then(doc => {
+            if (doc.exists) {
+              const gameData = doc.data();
+              const selectedStageId = gameData.selectedStageId || 'stage1';
+              const selectedStage = STAGES[selectedStageId];
+              
+              if (selectedStage && selectedStage.imagePath) {
+                // 画像パスが存在する場合、画像を表示
+                const imagePath = selectedStage.imagePath;
+                
+                // 画像コンテナの参照を取得
+                const imageContainer = document.getElementById('image-container');
+                if (imageContainer) {
+                  console.log('カウントダウン中に問題画像を表示します:', imagePath);
+                  
+                  // ロード中表示の処理
+                  const loadingContainer = document.getElementById('loading-container');
+                  if (loadingContainer) {
+                    loadingContainer.classList.remove('hidden');
+                  }
+                  
+                  // 画像要素を作成
+                  const img = document.createElement('img');
+                  img.src = imagePath;
+                  img.alt = '問題画像';
+                  img.id = 'game-image';
+                  
+                  // 画像の読み込み完了時の処理
+                  img.onload = () => {
+                    // ロード完了後の処理
+                    if (loadingContainer) {
+                      loadingContainer.classList.add('hidden');
+                    }
+                    // 画像のフェードイン
+                    img.style.opacity = '1';
+                  };
+                  
+                  // 画像コンテナをクリアして新しい画像を追加
+                  imageContainer.innerHTML = '';
+                  
+                  // 初期状態は透明（フェードイン効果用）
+                  img.style.opacity = '0';
+                  img.style.transition = 'opacity 0.5s ease-in-out';
+                  
+                  imageContainer.appendChild(img);
+                }
+              }
+            }
+          }).catch(error => {
+            console.error('ゲーム状態の取得に失敗しました:', error);
+          });
           
           // カウントダウン効果音を再生（オプション）
           // new Audio('countdown-beep.mp3').play().catch(e => console.log('効果音再生エラー:', e));
@@ -1703,13 +1783,17 @@ document.addEventListener('DOMContentLoaded', function() {
             
           // 回答時間でソート（昇順 = 早い順）
           rankings.sort((a, b) => a.answerTime - b.answerTime);
-          console.log('ソート済みランキング:', rankings);
+          
+          // 上位15名までに制限
+          const topRankings = rankings.slice(0, 15);
+          
+          console.log('ソート済みランキング (上位15名):', topRankings);
           
           // ランキングの表示
           const resultsRanking = document.getElementById('results-ranking');
           
           // ランキングがない場合
-          if (rankings.length === 0) {
+          if (topRankings.length === 0) {
             console.log('該当ステージの正解者はまだいません');
             updateGameStatus('該当ステージの正解者はまだいません');
           }
@@ -1745,14 +1829,14 @@ document.addEventListener('DOMContentLoaded', function() {
           // ランキングを表示
           showRankingResults(
             { id: stageId, name: gameState.stageName || '不明なステージ' },
-            rankings
+            topRankings
           );
           
           // Firestoreのゲーム状態にランキングデータを保存
           await gameStateCollection.doc('current').update({
             showRanking: true,
             rankingStageId: stageId,
-            rankingData: rankings,
+            rankingData: topRankings,
             rankingTimestamp: firebase.firestore.FieldValue.serverTimestamp()
           });
           
@@ -1876,7 +1960,9 @@ document.addEventListener('DOMContentLoaded', function() {
         // 配列に追加
         rankingItems.push({
           element: listItem,
-          rank: rank
+          rank: rank,
+          playerId: result.playerId,
+          playerName: result.playerName
         });
       });
       
@@ -1962,7 +2048,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         // 1位の発表前に少し間を空ける
-        delay += 400;
+        delay += 200;
         
         if (firstPlace) {
           // 1位発表前のカウントダウン効果
@@ -1994,9 +2080,78 @@ document.addEventListener('DOMContentLoaded', function() {
             // 以前のスクロール処理を削除（最初に移動済み）
             // 全ての演出は最初のスクロール後に表示される
             
+            // 全てのランキング発表が完了した後に追加ポイントを付与
+            setTimeout(() => {
+              // 上位5位のプレイヤーに追加ポイントを付与
+              distributeRankingBonusPoints(rankingItems);
+            }, 2000);
           }, delay + 1200);
         }
       }, delay);
+    }
+
+    // ランキング上位者に追加ポイントを付与する関数
+    async function distributeRankingBonusPoints(rankingItems) {
+      // 上位5位までのプレイヤーにボーナスポイントを付与
+      try {
+        // バッチ処理の準備
+        const batch = firebase.firestore().batch();
+        let bonusAwarded = false;
+        
+        // 上位5位までの処理
+        for (let i = 0; i < Math.min(5, rankingItems.length); i++) {
+          const rank = i + 1;
+          const player = rankingItems.find(item => item.rank === rank);
+          
+          if (player && player.playerId) {
+            const bonusPoints = RANKING_BONUS_POINTS[rank] || 0;
+            if (bonusPoints > 0) {
+              // プレイヤーのドキュメント参照
+              const playerRef = playersCollection.doc(player.playerId);
+              
+              // プレイヤーデータを取得
+              const playerDoc = await playerRef.get();
+              if (playerDoc.exists) {
+                const playerData = playerDoc.data();
+                const currentPoints = playerData.points || 0;
+                const newPoints = currentPoints + bonusPoints;
+                
+                // バッチに更新操作を追加
+                batch.update(playerRef, { 
+                  points: newPoints,
+                  lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                console.log(`ランキングボーナス: ${player.playerName} (${rank}位) に ${bonusPoints}pt 付与`);
+                bonusAwarded = true;
+                
+                // 現在のプレイヤーの場合はUI表示も更新
+                if (currentPlayer && player.playerId === currentPlayer.id) {
+                  // ポイント表示を更新（アニメーション付き）
+                  setTimeout(() => {
+                    updatePointsDisplay(newPoints, true);
+                    updateGameStatus(`ランキング${rank}位の報酬として ${bonusPoints}pt 獲得しました！`);
+                  }, rank * 500); // 順位ごとに少しずつ遅延
+                }
+              }
+            }
+          }
+        }
+        
+        // バッチ処理を実行
+        if (bonusAwarded) {
+          await batch.commit();
+          console.log('ランキングボーナスポイントの付与が完了しました');
+          
+          // 全体向けのメッセージ
+          setTimeout(() => {
+            updateGameStatus('ランキング上位のプレイヤーにボーナスポイントが付与されました');
+          }, 3000);
+        }
+      } catch (error) {
+        console.error('ランキングボーナスポイント付与エラー:', error);
+        updateGameStatus('ボーナスポイントの付与中にエラーが発生しました');
+      }
     }
 
     // ヒント購入ボタンのイベントリスナー
@@ -2798,6 +2953,122 @@ document.addEventListener('DOMContentLoaded', function() {
         return null;
       }
     }
+
+    // 途中経過発表（総合ポイントランキング表示）ボタンのイベントリスナー
+    showTotalRankingBtn.addEventListener('click', async () => {
+      try {
+        console.log('途中経過発表ボタンがクリックされました');
+        updateGameStatus('総合ポイントランキングを生成中...');
+        
+        // プレイヤー一覧を取得
+        const playersSnapshot = await playersCollection.get();
+        const players = [];
+        
+        // プレイヤーデータを収集
+        playersSnapshot.forEach(doc => {
+          const player = doc.data();
+          if (player.name) { // 名前があるプレイヤーのみ表示
+            players.push({
+              playerId: doc.id,
+              playerName: player.name,
+              points: player.points || 0,
+              // ランキング表示用のデータ構造に合わせる
+              answerTime: 0, // 表示には使用しない
+              answeredAt: player.lastUpdated || firebase.firestore.Timestamp.now(),
+              pointsEarned: player.points || 0 // 総合ポイント
+            });
+          }
+        });
+            
+        // ポイント順にソート（降順 = 多い順）
+        players.sort((a, b) => b.points - a.points);
+        
+        // 上位15名までに制限
+        const topPlayers = players.slice(0, 15);
+        
+        console.log('ソート済み総合ポイントランキング (上位15名):', topPlayers);
+        
+        // ランキングの表示
+        const resultsRanking = document.getElementById('results-ranking');
+        
+        // プレイヤーがいない場合
+        if (topPlayers.length === 0) {
+          console.log('プレイヤーが見つかりません');
+          updateGameStatus('プレイヤーが見つかりません');
+          return;
+        }
+        
+        // ランキングセクションを表示して自動スクロール
+        if (resultsRanking) {
+          resultsRanking.classList.remove('hidden');
+          
+          // ランキングセクションが表示された後に確実に自動スクロール
+          setTimeout(() => {
+            // window.scrollTo を使って画面上部に強制的にスクロール
+            const yOffset = 30; // ページ上部から少し下にスクロール位置を調整
+            const y = resultsRanking.getBoundingClientRect().top + window.pageYOffset - yOffset;
+            
+            window.scrollTo({
+              top: y,
+              behavior: 'smooth'
+            });
+            console.log('ランキングを画面上部に表示するためにスクロールしました');
+            
+            // さらに確実にスクロールするため、少し遅れて再度スクロール
+            setTimeout(() => {
+              const updatedY = resultsRanking.getBoundingClientRect().top + window.pageYOffset - yOffset;
+              window.scrollTo({
+                top: updatedY,
+                behavior: 'smooth'
+              });
+              console.log('ランキング位置を再確認してスクロールしました');
+            }, 500);
+          }, 100);
+        }
+        
+        // カスタムオブジェクトを作成して途中経過ランキングを表示
+        showRankingResults('総合ポイント', topPlayers);
+        
+        // カスタム表示用に少し修正を加える
+        // 秒数表示を総合ポイント表示に変更
+        setTimeout(() => {
+          // 秒数表示部分を非表示に
+          document.querySelectorAll('.answer-time').forEach(el => {
+            el.style.display = 'none';
+          });
+          
+          // ポイント表示部分を強調表示
+          document.querySelectorAll('.earned-points').forEach(el => {
+            // 「+」の部分を削除して純粋なポイント表示に
+            const pointsText = el.textContent.replace('+', '');
+            el.textContent = pointsText;
+            
+            // スタイル調整
+            el.style.fontWeight = 'bold';
+            el.style.fontSize = '1.2em';
+            el.style.color = '#ff8800'; // オレンジ色で強調
+            
+            // 位置調整（右からの位置を秒数表示部分の位置に移動）
+            el.style.position = 'absolute';
+            el.style.right = '10px';
+          });
+        }, 500);  // DOMが更新された後に実行
+        
+        // Firestoreのゲーム状態に途中経過ランキングデータを保存
+        await gameStateCollection.doc('current').update({
+          showRanking: true,
+          isTotalPointsRanking: true,
+          rankingStageId: 'total_points',
+          rankingData: topPlayers,
+          rankingTimestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        updateGameStatus('総合ポイントランキングを表示しました');
+      } catch (error) {
+        console.error('総合ポイントランキング生成エラー:', error);
+        updateGameStatus('総合ポイントランキングの生成に失敗しました: ' + error.message);
+      }
+    });
 
   } catch (error) {
     console.error("App initialization error:", error);
