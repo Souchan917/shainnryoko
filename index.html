@@ -37,6 +37,21 @@
             <div class="countdown-number">3</div>
         </div>
 
+        <!-- 名前変更画面 (新規追加) -->
+        <div id="name-change-panel" class="hidden-screen">
+            <h1>プレイヤー名前変更</h1>
+            <p class="name-change-info">現在の名前: <span id="current-player-name"></span></p>
+            <div class="form-group">
+                <label for="new-player-name">新しい名前:</label>
+                <input type="text" id="new-player-name" placeholder="新しいニックネームを入力してください" required>
+            </div>
+            <div class="button-group">
+                <button id="change-name-btn">名前を変更する</button>
+                <button id="cancel-name-change" class="cancel-button">キャンセル</button>
+            </div>
+            <p class="warning-message">※名前を変更すると、現在のポイントなどのデータは新しい名前に引き継がれます。</p>
+        </div>
+
         <!-- プレイヤー画面 -->
         <div id="player-panel" class="hidden-screen">
             <div class="player-info">
