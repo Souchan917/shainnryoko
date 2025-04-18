@@ -811,7 +811,7 @@ const STAGE15_CHOICES = {
   specialPlayerCorrectIndex: 0,
   
   // 通常プレイヤー用の正解インデックス（2: りんご）
-  normalPlayerCorrectIndex: 760,
+  normalPlayerCorrectIndex: 770,
   
   // この関数で正解インデックスを取得する
   getCorrectIndexForPlayer: function(playerName) {

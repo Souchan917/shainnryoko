@@ -179,7 +179,17 @@ document.addEventListener('DOMContentLoaded', function() {
           return typeof STAGE15_CHOICES !== 'undefined' ? STAGE15_CHOICES.specialCondition : true;
         },
         get specialPlayerName() {
-          return typeof STAGE15_CHOICES !== 'undefined' ? STAGE15_CHOICES.specialPlayerName : 'おのののか';
+          return typeof STAGE15_CHOICES !== 'undefined' ? 
+            (STAGE15_CHOICES.specialPlayerName || 
+             (STAGE15_CHOICES.specialPlayerNames && STAGE15_CHOICES.specialPlayerNames[0]) || 
+             'さとうたける') : 'さとうたける';
+        },
+        // 追加：複数の特殊プレイヤー名のgetterを実装
+        get specialPlayerNames() {
+          return typeof STAGE15_CHOICES !== 'undefined' ? 
+            (STAGE15_CHOICES.specialPlayerNames || 
+             (STAGE15_CHOICES.specialPlayerName ? [STAGE15_CHOICES.specialPlayerName] : ['さとうたける'])) 
+            : ['さとうたける'];
         }
       }
     };
@@ -2995,19 +3005,22 @@ document.addEventListener('DOMContentLoaded', function() {
               const correctIndex = STAGE15_CHOICES.getCorrectIndexForPlayer(currentPlayer.name);
               isCorrect = (choiceIndex === correctIndex);
               
-              if (currentPlayer.name === STAGE15_CHOICES.specialPlayerName) {
-                console.log(`特殊プレイヤー「${STAGE15_CHOICES.specialPlayerName}」の正解判定:`, isCorrect);
+              if (STAGE15_CHOICES.specialPlayerNames && STAGE15_CHOICES.specialPlayerNames.includes(currentPlayer.name)) {
+                console.log(`特殊プレイヤー「${currentPlayer.name}」の正解判定:`, isCorrect);
               } else {
                 console.log(`通常プレイヤー「${currentPlayer.name}」の正解判定:`, isCorrect);
               }
             } else {
               // 従来の方法（互換性のため残す）
-              if (currentPlayer.name === currentStageData.specialPlayerName) {
+              const specialNames = currentStageData.specialPlayerNames || 
+                                  (currentStageData.specialPlayerName ? [currentStageData.specialPlayerName] : []);
+              
+              if (specialNames.includes(currentPlayer.name)) {
                 isCorrect = (choiceIndex === currentStageData.correctChoiceIndex);
-                console.log(`特殊条件適用: ${currentStageData.specialPlayerName}が解答 - 正解判定:`, isCorrect);
+                console.log(`特殊条件適用: ${currentPlayer.name}が解答 - 正解判定:`, isCorrect);
               } else {
                 isCorrect = false;
-                console.log(`特殊条件適用: ${currentPlayer.name}は${currentStageData.specialPlayerName}ではないため不正解`);
+                console.log(`特殊条件適用: ${currentPlayer.name}は特殊プレイヤーではないため不正解`);
               }
             }
           } else {
