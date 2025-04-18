@@ -520,8 +520,13 @@ document.addEventListener('DOMContentLoaded', function() {
       updatePlayersList(); // プレイヤーリストを更新
       updateAnswersList(); // 解答状況を更新
       
-      // 定期的にプレイヤーリストと解答状況を更新
-      setInterval(() => {
+      // 既存のインターバルがあれば解除
+      if (window.masterUpdateInterval) {
+        clearInterval(window.masterUpdateInterval);
+      }
+      
+      // 定期的にプレイヤーリストと解答状況を更新（インターバルを保存）
+      window.masterUpdateInterval = setInterval(() => {
         updatePlayersList();
         updateAnswersList();
       }, 5000);
@@ -530,6 +535,12 @@ document.addEventListener('DOMContentLoaded', function() {
     // 登録画面に戻る処理
     backToRegistrationBtns.forEach(btn => {
       btn.addEventListener('click', () => {
+        // マスター更新インターバルがあれば解除
+        if (window.masterUpdateInterval) {
+          clearInterval(window.masterUpdateInterval);
+          window.masterUpdateInterval = null;
+        }
+        
         // 現在のプレイヤーを非アクティブに設定（削除はしない）
         if (currentPlayer.id) {
           playersCollection.doc(currentPlayer.id).update({
