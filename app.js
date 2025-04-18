@@ -558,34 +558,43 @@ document.addEventListener('DOMContentLoaded', function() {
                   }
                 }
                 
-                // 新しい一意のIDを生成（タイムスタンプと乱数を含む）
-                const newPlayerId = generatePlayerIdFromName(newPlayerName);
+                // 処理中の表示
+                updateGameStatus('名前変更処理中...');
                 
-                // 名前変更履歴を作成
-                const nameChangeHistory = oldPlayerData.nameChangeHistory || [];
-                
-                // 今回の名前変更情報を履歴に追加
-                nameChangeHistory.push({
-                  timestamp: new Date().toISOString(),
-                  oldId: oldPlayerId,
-                  oldName: oldPlayerName,
-                  newId: newPlayerId,
-                  newName: newPlayerName
-                });
-                
-                // 既存のデータを引き継いで新しいプレイヤーデータを作成
-                const newPlayerData = {
-                  ...oldPlayerData,
-                  id: newPlayerId,
-                  name: newPlayerName,
-                  previousName: oldPlayerName, // 直前の名前を記録
-                  nameChangeHistory: nameChangeHistory, // 名前変更履歴を保存
-                  isActive: true,
-                  lastLogin: firebase.firestore.FieldValue.serverTimestamp()
-                };
-                
-                // 新規プレイヤーデータを保存
-                playersCollection.doc(newPlayerId).set(newPlayerData)
+                // まず古いプレイヤーデータを削除
+                playersCollection.doc(oldPlayerId).delete()
+                  .then(() => {
+                    console.log('旧プレイヤーデータを削除しました:', oldPlayerId);
+                    
+                    // 新しい一意のIDを生成（タイムスタンプと乱数を含む）
+                    const newPlayerId = generatePlayerIdFromName(newPlayerName);
+                    
+                    // 名前変更履歴を作成
+                    const nameChangeHistory = oldPlayerData.nameChangeHistory || [];
+                    
+                    // 今回の名前変更情報を履歴に追加
+                    nameChangeHistory.push({
+                      timestamp: new Date().toISOString(),
+                      oldId: oldPlayerId,
+                      oldName: oldPlayerName,
+                      newId: newPlayerId,
+                      newName: newPlayerName
+                    });
+                    
+                    // 既存のデータを引き継いで新しいプレイヤーデータを作成
+                    const newPlayerData = {
+                      ...oldPlayerData,
+                      id: newPlayerId,
+                      name: newPlayerName,
+                      previousName: oldPlayerName, // 直前の名前を記録
+                      nameChangeHistory: nameChangeHistory, // 名前変更履歴を保存
+                      isActive: true,
+                      lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+                    };
+                    
+                    // 新規プレイヤーデータを保存
+                    return playersCollection.doc(newPlayerId).set(newPlayerData);
+                  })
                   .then(() => {
                     console.log('名前変更が完了しました。新ID:', newPlayerId);
                     
@@ -601,20 +610,28 @@ document.addEventListener('DOMContentLoaded', function() {
                     }, { merge: true });
                   })
                   .then(() => {
-                    // 旧プレイヤーデータの削除
-                    return playersCollection.doc(oldPlayerId).delete();
-                  })
-                  .then(() => {
-                    console.log('旧プレイヤーデータを削除しました:', oldPlayerId);
+                    // 正常に処理が完了したらステータスを更新
+                    updateGameStatus('名前変更が完了しました');
                     
                     // 現在のプレイヤー情報を更新
-                    currentPlayer = newPlayerData;
+                    currentPlayer = {
+                      id: newPlayerId,
+                      name: newPlayerName,
+                      previousName: oldPlayerName,
+                      nameChangeHistory: nameChangeHistory,
+                      isActive: true,
+                      points: oldPlayerData.points || POINTS_CONFIG.initial,
+                      answered: false,
+                      answerCorrect: false,
+                      stageId: null,
+                      lastLogin: new Date().toISOString()
+                    };
                     
                     // ローカルストレージを更新
                     saveToLocalStorage('currentPlayer', {
                       id: newPlayerId,
                       name: newPlayerName,
-                      points: newPlayerData.points || POINTS_CONFIG.initial
+                      points: oldPlayerData.points || POINTS_CONFIG.initial
                     });
                     
                     // プレイヤー表示を同期
@@ -631,6 +648,7 @@ document.addEventListener('DOMContentLoaded', function() {
                   })
                   .catch(error => {
                     console.error('名前変更処理エラー:', error);
+                    updateGameStatus('名前変更に失敗しました');
                     alert('名前変更に失敗しました: ' + error);
                     
                     // 一度だけのイベントリスナーを削除
@@ -658,17 +676,26 @@ document.addEventListener('DOMContentLoaded', function() {
         window.unsubscribePlayersListener();
       }
       
+      // プレイヤーリストをクリア（重要）
+      connectedPlayersList.innerHTML = '';
+      
+      // プレイヤーセレクタも更新
+      const playerSelector = document.getElementById('player-selector');
+      if (playerSelector) {
+        // 最初のオプション（プレイヤー選択）を残して他をクリア
+        playerSelector.innerHTML = '<option value="">プレイヤーを選択</option>';
+      }
+      
       // onSnapshotを使ってリアルタイム監視に変更
       window.unsubscribePlayersListener = playersCollection.onSnapshot(snapshot => {
-        // リストをクリア
+        // データ変更時も一度リストをクリア
         connectedPlayersList.innerHTML = '';
         
-        // プレイヤーセレクタも更新
-        const playerSelector = document.getElementById('player-selector');
         if (playerSelector) {
-          // 最初のオプション（プレイヤー選択）を残して他をクリア
           playerSelector.innerHTML = '<option value="">プレイヤーを選択</option>';
         }
+        
+        const activePlayerIds = new Set(); // アクティブなプレイヤーIDを管理
         
         if (!snapshot.empty) {
           // マスターモードかどうかを確認（マスター画面が表示されているか）
@@ -677,6 +704,10 @@ document.addEventListener('DOMContentLoaded', function() {
           // プレイヤー一覧を表示
           snapshot.forEach(doc => {
             const player = doc.data();
+            
+            // アクティブなプレイヤーIDを記録
+            activePlayerIds.add(doc.id);
+            
             const listItem = document.createElement('li');
             
             // プレイヤー名とポイント
@@ -781,6 +812,32 @@ document.addEventListener('DOMContentLoaded', function() {
                 listItem.appendChild(toggleBtn);
                 listItem.appendChild(historyContainer);
               }
+              
+              // 削除ボタンの追加
+              const deleteBtn = document.createElement('button');
+              deleteBtn.className = 'delete-player-btn';
+              deleteBtn.textContent = 'プレイヤーを削除';
+              deleteBtn.style.fontSize = '10px';
+              deleteBtn.style.padding = '2px 5px';
+              deleteBtn.style.marginTop = '3px';
+              deleteBtn.style.marginLeft = '5px';
+              deleteBtn.style.backgroundColor = '#e74c3c';
+              
+              deleteBtn.addEventListener('click', () => {
+                if (confirm(`プレイヤー "${player.name}" を削除しますか？この操作は元に戻せません。`)) {
+                  playersCollection.doc(player.id).delete()
+                    .then(() => {
+                      console.log(`プレイヤー ${player.name} (${player.id}) を削除しました`);
+                      updateGameStatus(`プレイヤー ${player.name} を削除しました`);
+                    })
+                    .catch(error => {
+                      console.error('プレイヤー削除エラー:', error);
+                      updateGameStatus('プレイヤー削除中にエラーが発生しました');
+                    });
+                }
+              });
+              
+              listItem.appendChild(deleteBtn);
             }
             
             connectedPlayersList.appendChild(listItem);
@@ -801,6 +858,8 @@ document.addEventListener('DOMContentLoaded', function() {
           listItem.style.color = '#666';
           connectedPlayersList.appendChild(listItem);
         }
+        
+        console.log('プレイヤーリストを更新しました。アクティブなプレイヤー数:', activePlayerIds.size);
       }, error => {
         console.error('プレイヤーリスト監視エラー:', error);
       });
