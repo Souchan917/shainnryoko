@@ -161,6 +161,7 @@ document.addEventListener('DOMContentLoaded', function() {
           'ドラゴンフルーツ',
           'マンゴスチン',
           'ランブータン',
+          'ランブータン2',
           'スターフルーツ'
         ],
         correctChoiceIndex: 0, // 0-based index: 最初の選択肢が正解
@@ -260,7 +261,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 選択肢の入力状態の設定
     function setChoiceInputState(enabled) {
-      const choiceButtons = document.querySelectorAll('.choice-btn');
+      const choiceButtons = document.querySelectorAll('#choice-buttons-container .choice-btn');
       choiceButtons.forEach(btn => {
         btn.disabled = !enabled;
       });
@@ -2457,10 +2458,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // ゲーム状態の監視を開始
     startGameStateListener();
     
-    // 選択肢ボタンの初期化
-    initializeChoiceButtons();
-    console.log('選択肢ボタンを初期化しました');
-    
     // プレイヤーポイントのリアルタイム更新リスナーを開始
     startPlayerPointsListener();
 
@@ -2824,7 +2821,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 選択肢の入力状態の設定
     function setChoiceInputState(enabled) {
-      const choiceButtons = document.querySelectorAll('.choice-btn');
+      const choiceButtons = document.querySelectorAll('#choice-buttons-container .choice-btn');
       choiceButtons.forEach(btn => {
         btn.disabled = !enabled;
       });
@@ -2837,24 +2834,51 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
       }
       
-      // 選択肢ボタンを取得
-      const choiceButtons = document.querySelectorAll('.choice-btn');
+      // 選択肢ボタンのコンテナを取得
+      const choiceButtonsContainer = document.getElementById('choice-buttons-container');
+      if (!choiceButtonsContainer) {
+        console.error('選択肢ボタンコンテナが見つかりません');
+        return;
+      }
       
-      // 選択肢をリセット
-      choiceButtons.forEach((btn, index) => {
-        // クラスとスタイルをリセット
-        btn.className = 'choice-btn';
-        btn.disabled = false;
+      // 既存の選択肢ボタンをすべて削除
+      choiceButtonsContainer.innerHTML = '';
+      
+      // 選択肢の数に応じてボタンを動的に生成
+      stageData.choices.forEach((choiceText, index) => {
+        const button = document.createElement('button');
+        button.className = 'choice-btn';
+        button.setAttribute('data-choice', (index + 1).toString());
+        button.textContent = choiceText;
         
-        // データを設定
-        if (index < stageData.choices.length) {
-          btn.textContent = stageData.choices[index];
-          btn.style.display = 'flex';
-        } else {
-          // 選択肢が4つ未満の場合は非表示
-          btn.style.display = 'none';
-        }
+        // クリックイベントリスナーを追加
+        button.addEventListener('click', async function() {
+          // 既に正解している場合は何もしない
+          if (currentPlayer.answerCorrect) {
+            console.log('このプレイヤーは既に正解済みです');
+            return;
+          }
+          
+          // クリックされた選択肢の番号を取得
+          const choiceIndex = parseInt(this.dataset.choice) - 1;
+          const choiceText = this.textContent;
+          
+          // ゲーム状態を取得
+          const gameState = await getCurrentGameState();
+          if (!gameState || !gameState.gameStarted) {
+            updateGameStatus('ゲームはまだ開始されていません。');
+            return;
+          }
+          
+          // 選択肢処理
+          processChoiceAnswer(choiceIndex, choiceText);
+        });
+        
+        // ボタンをコンテナに追加
+        choiceButtonsContainer.appendChild(button);
       });
+      
+      console.log(`${stageData.choices.length}個の選択肢ボタンを生成しました`);
       
       // 結果表示をリセット
       const choiceResult = document.getElementById('choice-result');
@@ -3092,7 +3116,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 回答後の選択肢ボタンの表示更新
     function updateChoiceButtonsAfterAnswer(selectedIndex, isCorrect, correctIndex) {
-      const choiceButtons = document.querySelectorAll('.choice-btn');
+      const choiceButtons = document.querySelectorAll('#choice-buttons-container .choice-btn');
       
       choiceButtons.forEach((btn, index) => {
         // 選択されたボタン
