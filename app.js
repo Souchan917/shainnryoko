@@ -269,6 +269,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // 解答入力欄のリセット
     function resetAnswerInput() {
       if (playerAnswer) playerAnswer.value = '';
+      resetAnswerResult();
+    }
+    
+    // 解答結果表示のみをリセット
+    function resetAnswerResult() {
       if (answerResult) {
         answerResult.textContent = '';
         answerResult.className = '';
@@ -1304,44 +1309,46 @@ document.addEventListener('DOMContentLoaded', function() {
     let fbConnectionError = false;
     let unsubscribeGameState = null;
     
-    // ゲーム状態の監視を開始する関数
+    // ゲーム状態リスナーを開始する関数
     function startGameStateListener() {
-      // 古いリスナーがあれば解除
-      if (unsubscribeGameState) {
-        unsubscribeGameState();
+      if (window.unsubscribeGameStateListener) {
+        window.unsubscribeGameStateListener();
       }
       
-      // リアルタイムリスナーを設定
-      unsubscribeGameState = gameStateCollection.doc('current')
-        .onSnapshot((doc) => {
-          console.log("Game state changed:", doc.exists ? doc.data() : null);
-          fbConnectionError = false;
-          
-          if (doc.exists) {
-            const gameState = doc.data();
+      window.unsubscribeGameStateListener = gameStateCollection.doc('current')
+        .onSnapshot(snapshot => {
+          if (snapshot.exists) {
+            const gameState = snapshot.data();
+            console.log('ゲーム状態が更新されました:', gameState);
             
-            // カウントダウン状態の処理
-            if (gameState.countdown === true) {
-              handleCountdown(gameState);
+            // 前回のステージIDを記録
+            const previousStageId = currentStageId;
+            // 現在のステージIDを更新
+            currentStageId = gameState.stageId;
+            
+            // ゲーム状態を更新
+            updateGameDisplay(gameState);
+            
+            // ステージが変わった場合のみ解答入力をリセット
+            if (previousStageId !== currentStageId) {
+              console.log('ステージが変更されたため解答入力をリセットします');
+              resetAnswerInput();
             } else {
-              // 通常のゲーム状態更新
-              updateGameDisplay(gameState);
+              // ステージが同じ場合でも、自分が回答していない場合のみ結果表示をリセット
+              // これにより他のプレイヤーの正解時に自分の入力内容が消えるのを防ぐ
+              if (!currentPlayer.answered) {
+                console.log('ステージは同じですが結果表示をリセットします');
+                resetAnswerResult();
+              } else {
+                console.log('既に回答済みのため、結果表示のリセットをスキップします');
+              }
             }
           } else {
-            console.log("データベースにゲーム状態がありません");
-            // 初期状態を設定
-            updateGameDisplay(createGameState(false));
+            console.log('現在のゲーム状態が存在しません');
           }
-        }, (error) => {
-          console.error("Error getting game state:", error);
-          fbConnectionError = true;
-          
-          // Firestoreからの取得に失敗した場合、ローカルストレージを使用
-          const localGameState = loadFromLocalStorage('gameState');
-          if (localGameState) {
-            console.log("Using local game state:", localGameState);
-            updateGameDisplay(localGameState);
-          }
+        }, error => {
+          console.error('ゲーム状態監視エラー:', error);
+          updateGameStatus('ゲーム状態の監視中にエラーが発生しました');
         });
     }
     
@@ -1841,7 +1848,7 @@ document.addEventListener('DOMContentLoaded', function() {
           // 待機中のメッセージ
           const gameContentP = document.querySelector('#game-content > p');
           if (gameContentP) {
-            gameContentP.textContent = 'マスターがゲームを開始するのを待っています...';
+            gameContentP.textContent = 'ゲームの開始を待っています...';
             gameContentP.classList.remove('game-started');
           }
           
@@ -1853,6 +1860,7 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('multiple-choice-section').classList.add('hidden');
           }
           
+          // ゲームが開始されていない場合は入力欄をクリア
           resetAnswerInput();
         }
       }
@@ -3114,11 +3122,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // 解答入力欄のリセット
     function resetAnswerInput() {
       if (playerAnswer) playerAnswer.value = '';
-      if (answerResult) {
-        answerResult.textContent = '';
-        answerResult.className = '';
-      }
-      if (answerTime) answerTime.textContent = '';
+      resetAnswerResult();
     }
 
     // 現在のゲーム状態を取得
