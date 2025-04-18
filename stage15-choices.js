@@ -171,7 +171,7 @@ const STAGE15_CHOICES = {
     '共生',
     '捕食',
     '繁殖',
-    '受精',
+    '卵',
     '胎生',
     '卵生',
     '脊椎動物',
@@ -420,24 +420,6 @@ const STAGE15_CHOICES = {
     '年金',
     '医療',
     '保健',
-    '障害者',
-    '生活保護',
-    '福祉',
-    'ボランティア',
-    '差別',
-    '格差',
-    '貧困',
-    '暴力',
-    '犯罪',
-    'いじめ',
-    '自殺',
-    '孤独',
-    'ネットいじめ',
-    '誹謗中傷',
-    '人身売買',
-    '虐待',
-    '薬物',
-    '依存症',
     '治安',
     '監視',
     '報道',
@@ -829,7 +811,7 @@ const STAGE15_CHOICES = {
   specialPlayerCorrectIndex: 0,
   
   // 通常プレイヤー用の正解インデックス（2: りんご）
-  normalPlayerCorrectIndex: 788,
+  normalPlayerCorrectIndex: 760,
   
   // この関数で正解インデックスを取得する
   getCorrectIndexForPlayer: function(playerName) {
