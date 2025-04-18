@@ -654,53 +654,100 @@ document.addEventListener('DOMContentLoaded', function() {
             playerIdSpan.textContent = `ID: ${shortId}`;
             listItem.appendChild(playerIdSpan);
             
-            // 名前変更履歴があれば表示する
-            if (player.nameHistory && player.nameHistory.length > 0) {
-              const historyDiv = document.createElement('div');
-              historyDiv.className = 'name-history';
-              historyDiv.style.fontSize = '0.7em';
-              historyDiv.style.color = '#666';
-              historyDiv.style.marginTop = '3px';
-              historyDiv.style.borderTop = '1px dotted #ccc';
-              historyDiv.style.paddingTop = '3px';
+            // 名前変更履歴がある場合は履歴表示ボタンを追加
+            if (player.previousName) {
+              // 最新の名前変更だけ簡易表示
+              const nameHistorySpan = document.createElement('span');
+              nameHistorySpan.className = 'name-history';
+              nameHistorySpan.style.fontSize = '0.7em';
+              nameHistorySpan.style.color = '#779';
+              nameHistorySpan.style.display = 'block';
+              nameHistorySpan.style.marginTop = '2px';
+              nameHistorySpan.style.fontStyle = 'italic';
+              nameHistorySpan.textContent = `旧名: ${player.previousName}`;
+              listItem.appendChild(nameHistorySpan);
               
-              // 履歴タイトル
-              const historyTitle = document.createElement('div');
-              historyTitle.textContent = '名前変更履歴:';
-              historyTitle.style.fontWeight = 'bold';
-              historyTitle.style.marginBottom = '2px';
-              historyDiv.appendChild(historyTitle);
-              
-              // 履歴リスト（新しい順に表示）
-              const historyList = document.createElement('ul');
-              historyList.style.listStyle = 'none';
-              historyList.style.margin = '0';
-              historyList.style.padding = '0 0 0 8px';
-              
-              // 名前変更履歴をループして表示
-              for (let i = player.nameHistory.length - 1; i >= 0; i--) {
-                const history = player.nameHistory[i];
-                const historyItem = document.createElement('li');
+              // 履歴表示ボタン
+              if (player.nameHistory && Array.isArray(player.nameHistory) && player.nameHistory.length > 0) {
+                const historyButton = document.createElement('button');
+                historyButton.className = 'history-button';
+                historyButton.textContent = '履歴表示';
+                historyButton.style.fontSize = '0.7em';
+                historyButton.style.padding = '2px 5px';
+                historyButton.style.marginTop = '2px';
+                historyButton.style.cursor = 'pointer';
+                historyButton.style.backgroundColor = '#f0f0f0';
+                historyButton.style.border = '1px solid #ccc';
+                historyButton.style.borderRadius = '3px';
                 
-                // タイムスタンプがある場合は表示を整形
-                let timeString = '日時不明';
-                if (history.timestamp) {
-                  const date = history.timestamp.toDate ? history.timestamp.toDate() : new Date(history.timestamp);
-                  timeString = date.toLocaleString('ja-JP', {
-                    year: 'numeric',
-                    month: '2-digit',
-                    day: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  });
-                }
+                // 履歴表示ボタンのクリックイベント
+                historyButton.addEventListener('click', function() {
+                  // 既存の履歴表示を削除（二重表示防止）
+                  const existingHistory = document.querySelector(`.full-history-${player.id}`);
+                  if (existingHistory) {
+                    existingHistory.remove();
+                    return; // 既に表示されている場合は非表示にして終了
+                  }
+                  
+                  // 全履歴表示コンテナ
+                  const historyContainer = document.createElement('div');
+                  historyContainer.className = `full-history-${player.id}`;
+                  historyContainer.style.fontSize = '0.75em';
+                  historyContainer.style.backgroundColor = '#f8f8ff';
+                  historyContainer.style.border = '1px solid #ddf';
+                  historyContainer.style.borderRadius = '4px';
+                  historyContainer.style.padding = '5px';
+                  historyContainer.style.marginTop = '5px';
+                  historyContainer.style.marginBottom = '5px';
+                  
+                  // タイトル
+                  const historyTitle = document.createElement('div');
+                  historyTitle.style.fontWeight = 'bold';
+                  historyTitle.style.marginBottom = '3px';
+                  historyTitle.textContent = '名前変更履歴:';
+                  historyContainer.appendChild(historyTitle);
+                  
+                  // 現在の名前
+                  const currentNameItem = document.createElement('div');
+                  currentNameItem.style.padding = '2px 0';
+                  currentNameItem.innerHTML = `<span style="color:#26c;">現在</span>: ${player.name}`;
+                  historyContainer.appendChild(currentNameItem);
+                  
+                  // 前回の名前
+                  const previousNameItem = document.createElement('div');
+                  previousNameItem.style.padding = '2px 0';
+                  previousNameItem.innerHTML = `<span style="color:#26c;">前回</span>: ${player.previousName}`;
+                  historyContainer.appendChild(previousNameItem);
+                  
+                  // 履歴リスト
+                  if (player.nameHistory && player.nameHistory.length > 0) {
+                    player.nameHistory.forEach((oldName, index) => {
+                      const historyItem = document.createElement('div');
+                      historyItem.style.padding = '2px 0';
+                      historyItem.innerHTML = `<span style="color:#26c;">${index + 2}代前</span>: ${oldName}`;
+                      historyContainer.appendChild(historyItem);
+                    });
+                  }
+                  
+                  // 閉じるボタン
+                  const closeButton = document.createElement('button');
+                  closeButton.textContent = '閉じる';
+                  closeButton.style.fontSize = '0.9em';
+                  closeButton.style.padding = '2px 5px';
+                  closeButton.style.marginTop = '5px';
+                  closeButton.style.cursor = 'pointer';
+                  closeButton.style.backgroundColor = '#f0f0f0';
+                  closeButton.style.border = '1px solid #ccc';
+                  closeButton.style.borderRadius = '3px';
+                  closeButton.onclick = function() { historyContainer.remove(); };
+                  historyContainer.appendChild(closeButton);
+                  
+                  // 履歴コンテナをリストアイテムに追加
+                  listItem.appendChild(historyContainer);
+                });
                 
-                historyItem.textContent = `${history.name} (${timeString})`;
-                historyList.appendChild(historyItem);
+                listItem.appendChild(historyButton);
               }
-              
-              historyDiv.appendChild(historyList);
-              listItem.appendChild(historyDiv);
             }
             
             // 解答済みのプレイヤーにはステータスを表示
@@ -727,7 +774,14 @@ document.addEventListener('DOMContentLoaded', function() {
               option.value = doc.id;
               // IDを含めて表示（マスター用）
               const shortOptionId = player.id.split('_').slice(1, 3).join('_');
-              option.textContent = `${player.name} [${shortOptionId}] (${player.points || 0}pt)`;
+              let optionText = `${player.name} [${shortOptionId}] (${player.points || 0}pt)`;
+              
+              // 名前変更履歴がある場合は追加
+              if (player.previousName) {
+                optionText += ` ← ${player.previousName}`;
+              }
+              
+              option.textContent = optionText;
               playerSelector.appendChild(option);
             }
           });
@@ -3323,13 +3377,6 @@ document.addEventListener('DOMContentLoaded', function() {
         // 新しい名前のIDを生成
         const newPlayerId = generatePlayerIdFromName(newPlayerName);
         
-        // 新しい名前が既に使用されているか確認
-        const newPlayerDoc = await playersCollection.doc(newPlayerId).get();
-        if (newPlayerDoc.exists) {
-          alert('この名前は既に使用されています。別の名前を選んでください。');
-          return;
-        }
-        
         // 現在のプレイヤーデータを取得
         const currentPlayerDoc = await playersCollection.doc(currentPlayer.id).get();
         if (!currentPlayerDoc.exists) {
@@ -3342,14 +3389,17 @@ document.addEventListener('DOMContentLoaded', function() {
         // 現在のプレイヤーデータを取得
         const playerData = currentPlayerDoc.data();
         
-        // 名前変更履歴を作成または更新
-        let nameHistory = playerData.nameHistory || [];
-        // 現在の名前と日時を履歴に追加
-        nameHistory.push({
-          name: currentPlayer.name,
-          id: currentPlayer.id,
-          timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        });
+        // 名前変更履歴を作成
+        let nameHistory = [];
+        if (playerData.previousName) {
+          // 既存の履歴がある場合はそれを活用
+          nameHistory = playerData.nameHistory || [];
+          nameHistory.unshift(playerData.previousName); // 最新の旧名を先頭に追加
+        }
+        // 履歴が長すぎる場合は古いものを削除（最大10件まで保持）
+        if (nameHistory.length > 9) {
+          nameHistory = nameHistory.slice(0, 9);
+        }
         
         // 新しいプレイヤーデータを作成（ID、名前を更新し、他のデータは引き継ぐ）
         const newPlayerData = {
