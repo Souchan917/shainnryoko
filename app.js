@@ -1741,9 +1741,9 @@ document.addEventListener('DOMContentLoaded', function() {
             buyHintBtn.textContent = `ヒントを見る (${gameState.hintCost || 5}pt)`;
           }
           
-          // ヒントセクションを表示
+          // ヒントセクションを常に非表示に設定
           if (hintSection) {
-            hintSection.classList.remove('hidden');
+            hintSection.classList.add('hidden');
           }
         } else {
           console.log('同じステージの更新を検出。解答結果表示を維持します。');
@@ -1765,7 +1765,7 @@ document.addEventListener('DOMContentLoaded', function() {
         gameStartTime = null;
         console.log('ゲーム開始時刻をリセットしました');
         
-        // ヒントセクションを非表示
+        // ヒントセクションを常に非表示に設定
         if (hintSection) {
           hintSection.classList.add('hidden');
         }

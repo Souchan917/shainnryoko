@@ -166,6 +166,7 @@ button:hover {
     z-index: 2;
     width: 100%;
     line-height: 1.2;
+    gap: 5px;
 }
 
 /* プレイヤー名表示（左側） */
@@ -188,6 +189,26 @@ button:hover {
     display: flex;
     align-items: center;
     justify-content: flex-end;
+    margin-right: 10px;
+}
+
+/* 名前変更ボタン（ヘッダー内） */
+.name-change-button {
+    font-size: 0.5em;
+    padding: 3px 8px;
+    margin: 0;
+    background-color: #607d8b;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    white-space: nowrap;
+    height: fit-content;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.name-change-button:hover {
+    background-color: #455a64;
 }
 
 #player-points {
