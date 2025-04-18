@@ -373,8 +373,12 @@ document.addEventListener('DOMContentLoaded', function() {
       targetScreen.classList.add('active-screen');
     }
   
-    // プレイヤー名からプレイヤーIDを生成（名前に基づいた一貫したID）
+    // プレイヤー名からプレイヤーIDを生成（ユニークなIDを生成）
     function generatePlayerIdFromName(playerName) {
+      // タイムスタンプを含めることで同じ名前でも異なるIDを生成
+      const timestamp = Date.now();
+      const randomSuffix = Math.floor(Math.random() * 10000); // 0〜9999の乱数
+      
       // シンプルなハッシュ関数
       let hash = 0;
       for (let i = 0; i < playerName.length; i++) {
@@ -382,8 +386,9 @@ document.addEventListener('DOMContentLoaded', function() {
         hash = ((hash << 5) - hash) + char;
         hash = hash & hash; // 32bit整数に変換
       }
-      // 負の値を避けるために絶対値を取り、プレフィックスを追加
-      return `player_${Math.abs(hash)}`;
+      
+      // 負の値を避けるために絶対値を取り、タイムスタンプと乱数を追加
+      return `player_${Math.abs(hash)}_${timestamp}_${randomSuffix}`;
     }
   
     // プレイヤー登録処理
@@ -395,52 +400,29 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
       }
       
-      // プレイヤー名からIDを生成（同じ名前なら同じIDになる）
+      // プレイヤー名から一意のIDを生成（タイムスタンプと乱数を含む）
       const playerId = generatePlayerIdFromName(playerName);
       
-      // まず既存のプレイヤー情報を取得
-      playersCollection.doc(playerId).get()
-        .then(doc => {
-          if (doc.exists) {
-            // 既存プレイヤーの場合は情報を復元
-            console.log('既存プレイヤーの情報を復元:', playerId);
-            const existingPlayerData = doc.data();
-            
-            // 現在のプレイヤー情報を更新
-            currentPlayer = {
-              ...existingPlayerData,
-              isActive: true,
-              lastLogin: firebase.firestore.FieldValue.serverTimestamp()
-            };
-            
-            // 復元した情報をFirestoreに書き戻す（活動状態を更新）
-            return playersCollection.doc(playerId).update({
-              isActive: true,
-              lastLogin: firebase.firestore.FieldValue.serverTimestamp()
-            });
-          } else {
-            // 新規プレイヤーの場合は新しく作成
-            console.log('新規プレイヤーを作成:', playerId);
-            
-            // プレイヤー情報を作成
-            currentPlayer = {
-              id: playerId,
-              name: playerName,
-              isActive: true,
-              joinedAt: firebase.firestore.FieldValue.serverTimestamp(),
-              lastLogin: firebase.firestore.FieldValue.serverTimestamp(),
-              answered: false,
-              answerCorrect: false,
-              points: POINTS_CONFIG.initial,
-              stageId: null // 現在のステージIDを追跡
-            };
-            
-            // Firestoreに新規プレイヤー情報を保存
-            return playersCollection.doc(playerId).set(currentPlayer);
-          }
-        })
+      // 新規プレイヤーとして登録
+      console.log('新規プレイヤーを作成:', playerId);
+      
+      // プレイヤー情報を作成
+      currentPlayer = {
+        id: playerId,
+        name: playerName,
+        isActive: true,
+        joinedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        lastLogin: firebase.firestore.FieldValue.serverTimestamp(),
+        answered: false,
+        answerCorrect: false,
+        points: POINTS_CONFIG.initial,
+        stageId: null // 現在のステージIDを追跡
+      };
+      
+      // Firestoreに新規プレイヤー情報を保存
+      playersCollection.doc(playerId).set(currentPlayer)
         .then(() => {
-          console.log('プレイヤー登録/復元成功:', playerId);
+          console.log('プレイヤー登録成功:', playerId);
           
           // プレイヤー表示を同期（名前とポイント）
           syncPlayerDisplay();
@@ -459,7 +441,7 @@ document.addEventListener('DOMContentLoaded', function() {
           startPlayerPointsListener();
         })
         .catch(error => {
-          console.error('プレイヤー登録/復元エラー:', error);
+          console.error('プレイヤー登録エラー:', error);
           alert('プレイヤー登録に失敗しました。もう一度お試しください。');
         });
     });
@@ -531,7 +513,7 @@ document.addEventListener('DOMContentLoaded', function() {
       console.log('マスター画面を表示しました - リアルタイムリスナーを設定しました');
     });
   
-    // 登録画面に戻る処理
+    // 登録画面に戻る処理（名前変更ボタン）
     backToRegistrationBtns.forEach(btn => {
       btn.addEventListener('click', () => {
         // マスター更新インターバルがあれば解除
@@ -540,35 +522,132 @@ document.addEventListener('DOMContentLoaded', function() {
           window.masterUpdateInterval = null;
         }
         
-        // 現在のプレイヤーを非アクティブに設定（削除はしない）
-        if (currentPlayer.id) {
-          playersCollection.doc(currentPlayer.id).update({
+        // 名前変更処理のために現在のプレイヤー情報を保持
+        const oldPlayerId = currentPlayer.id;
+        const oldPlayerData = { ...currentPlayer };
+        const oldPlayerName = currentPlayer.name;
+        
+        // currentPlayerをリセットせず、isActiveをfalseに変更
+        currentPlayer.isActive = false;
+        
+        // 現在のプレイヤーを非アクティブに設定
+        if (oldPlayerId) {
+          playersCollection.doc(oldPlayerId).update({
             isActive: false,
             lastLogout: firebase.firestore.FieldValue.serverTimestamp()
           })
             .then(() => {
-              console.log('プレイヤーを非アクティブに設定しました');
-              // 現在のプレイヤー情報をリセット（IDと名前は保持）
-              const playerName = currentPlayer.name;
-              const playerId = currentPlayer.id;
-              currentPlayer = {
-                id: playerId,
-                name: playerName,
-                isActive: false,
-                joinedAt: null,
-                answered: false,
-                answerCorrect: false,
-                points: POINTS_CONFIG.initial,
-                stageId: null // 現在のステージIDをリセット
+              console.log('旧プレイヤーを非アクティブに設定しました。名前変更の準備完了。');
+              
+              // 登録画面に戻る
+              showScreen('player-registration');
+              
+              // 名前変更に対応した登録ボタンの処理を追加
+              const handleNameChange = function() {
+                const newPlayerName = playerNameInput.value.trim();
+                
+                if (!newPlayerName) {
+                  alert('プレイヤー名を入力してください');
+                  return;
+                }
+                
+                // 新しい名前で同じ名前の場合でも、キャンセルするか新しいアカウントとして登録するか選択
+                if (newPlayerName === oldPlayerData.name) {
+                  if (!confirm('同じ名前が入力されました。新しいアカウントとして登録しますか？')) {
+                    return; // キャンセルする場合
+                  }
+                }
+                
+                // 新しい一意のIDを生成（タイムスタンプと乱数を含む）
+                const newPlayerId = generatePlayerIdFromName(newPlayerName);
+                
+                // 名前変更履歴を作成
+                const nameChangeHistory = oldPlayerData.nameChangeHistory || [];
+                
+                // 今回の名前変更情報を履歴に追加
+                nameChangeHistory.push({
+                  timestamp: new Date().toISOString(),
+                  oldId: oldPlayerId,
+                  oldName: oldPlayerName,
+                  newId: newPlayerId,
+                  newName: newPlayerName
+                });
+                
+                // 既存のデータを引き継いで新しいプレイヤーデータを作成
+                const newPlayerData = {
+                  ...oldPlayerData,
+                  id: newPlayerId,
+                  name: newPlayerName,
+                  previousName: oldPlayerName, // 直前の名前を記録
+                  nameChangeHistory: nameChangeHistory, // 名前変更履歴を保存
+                  isActive: true,
+                  lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+                };
+                
+                // 新規プレイヤーデータを保存
+                playersCollection.doc(newPlayerId).set(newPlayerData)
+                  .then(() => {
+                    console.log('名前変更が完了しました。新ID:', newPlayerId);
+                    
+                    // 名前変更ログをFirestoreに記録（全体の履歴用）
+                    return gameStateCollection.doc('nameChangeLog').set({
+                      latestChange: {
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                        oldId: oldPlayerId,
+                        oldName: oldPlayerName,
+                        newId: newPlayerId,
+                        newName: newPlayerName
+                      }
+                    }, { merge: true });
+                  })
+                  .then(() => {
+                    // 旧プレイヤーデータの削除
+                    return playersCollection.doc(oldPlayerId).delete();
+                  })
+                  .then(() => {
+                    console.log('旧プレイヤーデータを削除しました:', oldPlayerId);
+                    
+                    // 現在のプレイヤー情報を更新
+                    currentPlayer = newPlayerData;
+                    
+                    // ローカルストレージを更新
+                    saveToLocalStorage('currentPlayer', {
+                      id: newPlayerId,
+                      name: newPlayerName,
+                      points: newPlayerData.points || POINTS_CONFIG.initial
+                    });
+                    
+                    // プレイヤー表示を同期
+                    syncPlayerDisplay();
+                    
+                    // プレイヤー画面に遷移
+                    showScreen('player-panel');
+                    
+                    // ポイントのリアルタイムリスナーを開始
+                    startPlayerPointsListener();
+                    
+                    // 一度だけのイベントリスナーを削除
+                    registerPlayerBtn.removeEventListener('click', handleNameChange);
+                  })
+                  .catch(error => {
+                    console.error('名前変更処理エラー:', error);
+                    alert('名前変更に失敗しました: ' + error);
+                    
+                    // 一度だけのイベントリスナーを削除
+                    registerPlayerBtn.removeEventListener('click', handleNameChange);
+                  });
               };
+              
+              // 登録ボタンのデフォルトのクリックイベントを一時的に上書き
+              registerPlayerBtn.addEventListener('click', handleNameChange);
             })
             .catch(error => {
               console.error('プレイヤー情報の更新に失敗:', error);
             });
+        } else {
+          // プレイヤーIDがない場合は単に登録画面に戻る
+          showScreen('player-registration');
         }
-        
-        // 登録画面に戻る
-        showScreen('player-registration');
       });
     });
   
@@ -592,6 +671,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         if (!snapshot.empty) {
+          // マスターモードかどうかを確認（マスター画面が表示されているか）
+          const isMasterMode = masterPanel.classList.contains('active-screen');
+          
           // プレイヤー一覧を表示
           snapshot.forEach(doc => {
             const player = doc.data();
@@ -623,6 +705,82 @@ document.addEventListener('DOMContentLoaded', function() {
               }
               
               listItem.appendChild(statusSpan);
+            }
+            
+            // マスターモードの場合、追加情報を表示
+            if (isMasterMode) {
+              // IDを表示
+              const idInfo = document.createElement('div');
+              idInfo.className = 'player-id-info';
+              idInfo.textContent = `ID: ${player.id}`;
+              idInfo.style.fontSize = '10px';
+              idInfo.style.color = '#777';
+              idInfo.style.marginTop = '3px';
+              listItem.appendChild(idInfo);
+              
+              // 名前変更履歴がある場合は表示
+              if (player.previousName) {
+                const previousNameInfo = document.createElement('div');
+                previousNameInfo.className = 'previous-name-info';
+                previousNameInfo.textContent = `前の名前: ${player.previousName}`;
+                previousNameInfo.style.fontSize = '10px';
+                previousNameInfo.style.color = '#777';
+                previousNameInfo.style.fontStyle = 'italic';
+                listItem.appendChild(previousNameInfo);
+              }
+              
+              // 詳細な名前変更履歴がある場合
+              if (player.nameChangeHistory && player.nameChangeHistory.length > 0) {
+                // 表示/非表示を切り替えるボタン
+                const toggleBtn = document.createElement('button');
+                toggleBtn.className = 'toggle-history-btn';
+                toggleBtn.textContent = '変更履歴を表示';
+                toggleBtn.style.fontSize = '10px';
+                toggleBtn.style.padding = '2px 5px';
+                toggleBtn.style.marginTop = '3px';
+                
+                // 履歴コンテナを作成（初期状態は非表示）
+                const historyContainer = document.createElement('div');
+                historyContainer.className = 'name-history-container';
+                historyContainer.style.display = 'none';
+                historyContainer.style.marginLeft = '10px';
+                historyContainer.style.marginTop = '5px';
+                historyContainer.style.borderLeft = '2px solid #ddd';
+                historyContainer.style.paddingLeft = '5px';
+                
+                // 履歴を新しい順に表示
+                player.nameChangeHistory.slice().reverse().forEach((change, index) => {
+                  const changeItem = document.createElement('div');
+                  changeItem.className = 'history-item';
+                  changeItem.style.fontSize = '10px';
+                  changeItem.style.margin = '2px 0';
+                  
+                  // 日時の整形
+                  const date = new Date(change.timestamp);
+                  const formattedDate = `${date.getFullYear()}/${(date.getMonth()+1).toString().padStart(2, '0')}/${date.getDate().toString().padStart(2, '0')} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+                  
+                  changeItem.innerHTML = `
+                    <div>${formattedDate}</div>
+                    <div>${change.oldName} (${change.oldId.substring(0, 8)}...) → ${change.newName} (${change.newId.substring(0, 8)}...)</div>
+                  `;
+                  
+                  historyContainer.appendChild(changeItem);
+                });
+                
+                // ボタンクリックで履歴の表示/非表示を切り替え
+                toggleBtn.addEventListener('click', () => {
+                  if (historyContainer.style.display === 'none') {
+                    historyContainer.style.display = 'block';
+                    toggleBtn.textContent = '変更履歴を隠す';
+                  } else {
+                    historyContainer.style.display = 'none';
+                    toggleBtn.textContent = '変更履歴を表示';
+                  }
+                });
+                
+                listItem.appendChild(toggleBtn);
+                listItem.appendChild(historyContainer);
+              }
             }
             
             connectedPlayersList.appendChild(listItem);
