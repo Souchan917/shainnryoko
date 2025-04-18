@@ -574,6 +574,13 @@ document.addEventListener('DOMContentLoaded', function() {
         // リストをクリア
         connectedPlayersList.innerHTML = '';
         
+        // プレイヤーセレクタも更新
+        const playerSelector = document.getElementById('player-selector');
+        if (playerSelector) {
+          // 最初のオプション（プレイヤー選択）を残して他をクリア
+          playerSelector.innerHTML = '<option value="">プレイヤーを選択</option>';
+        }
+        
         if (!snapshot.empty) {
           // プレイヤー一覧を表示
           snapshot.forEach(doc => {
@@ -609,6 +616,14 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             connectedPlayersList.appendChild(listItem);
+            
+            // プレイヤーセレクタにもプレイヤーを追加（マスターを除く）
+            if (playerSelector && !player.isMaster) {
+              const option = document.createElement('option');
+              option.value = doc.id;
+              option.textContent = `${player.name} (${player.points || 0}pt)`;
+              playerSelector.appendChild(option);
+            }
           });
         } else {
           // プレイヤーがいない場合
@@ -3067,6 +3082,135 @@ document.addEventListener('DOMContentLoaded', function() {
       } catch (error) {
         console.error('総合ポイントランキング生成エラー:', error);
         updateGameStatus('総合ポイントランキングの生成に失敗しました: ' + error.message);
+      }
+    });
+
+    // 特定プレイヤーへのポイント付与/減算機能
+    const playerSelector = document.getElementById('player-selector');
+    const playerPointsAmount = document.getElementById('player-points-amount');
+    const addPointsBtn = document.getElementById('add-points-btn');
+    const subtractPointsBtn = document.getElementById('subtract-points-btn');
+    
+    // ポイント付与ボタンのイベントリスナー
+    addPointsBtn.addEventListener('click', async () => {
+      try {
+        // プレイヤーとポイント数を確認
+        const playerId = playerSelector.value;
+        const pointsAmount = parseInt(playerPointsAmount.value);
+        
+        if (!playerId) {
+          updateGameStatus('プレイヤーを選択してください');
+          return;
+        }
+        
+        if (isNaN(pointsAmount) || pointsAmount <= 0) {
+          updateGameStatus('有効なポイント数を入力してください');
+          return;
+        }
+        
+        // プレイヤー情報を取得
+        const playerDoc = await playersCollection.doc(playerId).get();
+        if (!playerDoc.exists) {
+          updateGameStatus('選択されたプレイヤーが見つかりません');
+          return;
+        }
+        
+        const playerData = playerDoc.data();
+        const currentPoints = playerData.points || 0;
+        const newPoints = currentPoints + pointsAmount;
+        
+        // ポイントを付与（incrementを使用）
+        await playersCollection.doc(playerId).update({
+          points: firebase.firestore.FieldValue.increment(pointsAmount),
+          lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        console.log(`${playerData.name}に${pointsAmount}ポイントを付与しました（新しいポイント: ${newPoints}pt）`);
+        updateGameStatus(`${playerData.name}に${pointsAmount}ポイントを付与しました`);
+        
+        // ポイント付与ログを記録
+        await gameStateCollection.doc('pointManagementLog').set({
+          latestAction: {
+            playerId: playerId,
+            playerName: playerData.name,
+            actionType: 'add',
+            amount: pointsAmount,
+            newTotal: newPoints,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+            by: 'master'
+          }
+        }, { merge: true });
+        
+        // onSnapshotリスナーが自動的にプレイヤーリストを更新するため、ここでupdatePlayersList()を呼び出す必要はない
+        
+      } catch (error) {
+        console.error('ポイント付与エラー:', error);
+        updateGameStatus('ポイント付与に失敗しました');
+      }
+    });
+    
+    // ポイント減算ボタンのイベントリスナー
+    subtractPointsBtn.addEventListener('click', async () => {
+      try {
+        // プレイヤーとポイント数を確認
+        const playerId = playerSelector.value;
+        const pointsAmount = parseInt(playerPointsAmount.value);
+        
+        if (!playerId) {
+          updateGameStatus('プレイヤーを選択してください');
+          return;
+        }
+        
+        if (isNaN(pointsAmount) || pointsAmount <= 0) {
+          updateGameStatus('有効なポイント数を入力してください');
+          return;
+        }
+        
+        // プレイヤー情報を取得
+        const playerDoc = await playersCollection.doc(playerId).get();
+        if (!playerDoc.exists) {
+          updateGameStatus('選択されたプレイヤーが見つかりません');
+          return;
+        }
+        
+        const playerData = playerDoc.data();
+        const currentPoints = playerData.points || 0;
+        
+        // 減算後のポイントが0未満にならないようにチェック
+        if (currentPoints < pointsAmount) {
+          updateGameStatus(`ポイントが足りません。${playerData.name}の現在のポイントは${currentPoints}ptです`);
+          return;
+        }
+        
+        const newPoints = currentPoints - pointsAmount;
+        
+        // ポイントを減算（incrementを使用し、負の値を指定）
+        await playersCollection.doc(playerId).update({
+          points: firebase.firestore.FieldValue.increment(-pointsAmount),
+          lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        console.log(`${playerData.name}から${pointsAmount}ポイントを減算しました（新しいポイント: ${newPoints}pt）`);
+        updateGameStatus(`${playerData.name}から${pointsAmount}ポイントを減算しました`);
+        
+        // ポイント減算ログを記録
+        await gameStateCollection.doc('pointManagementLog').set({
+          latestAction: {
+            playerId: playerId,
+            playerName: playerData.name,
+            actionType: 'subtract',
+            amount: pointsAmount,
+            newTotal: newPoints,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+            by: 'master'
+          }
+        }, { merge: true });
+        
+        // onSnapshotリスナーが自動的にプレイヤーリストを更新するため、ここでupdatePlayersList()を呼び出す必要はない
+        
+      } catch (error) {
+        console.error('ポイント減算エラー:', error);
+        updateGameStatus('ポイント減算に失敗しました');
       }
     });
 

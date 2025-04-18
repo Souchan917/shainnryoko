@@ -156,6 +156,19 @@
                         <input type="number" id="points-to-distribute" placeholder="付与ポイント" min="1" value="5">
                         <button id="distribute-points-btn">全員にポイント付与</button>
                     </div>
+                    
+                    <!-- 特定プレイヤーへのポイント付与/減算機能 -->
+                    <div class="form-group player-point-control">
+                        <select id="player-selector" class="player-selector">
+                            <option value="">プレイヤーを選択</option>
+                            <!-- プレイヤーリストがここに動的に追加されます -->
+                        </select>
+                        <input type="number" id="player-points-amount" placeholder="ポイント" min="1" value="5">
+                        <div class="point-control-buttons">
+                            <button id="add-points-btn" class="point-btn add">+付与</button>
+                            <button id="subtract-points-btn" class="point-btn subtract">-減算</button>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="players-list">
