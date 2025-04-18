@@ -517,19 +517,18 @@ document.addEventListener('DOMContentLoaded', function() {
     // マスター画面への移動
     goToMasterBtn.addEventListener('click', () => {
       showScreen('master-panel');
-      updatePlayersList(); // プレイヤーリストを更新
-      updateAnswersList(); // 解答状況を更新
       
       // 既存のインターバルがあれば解除
       if (window.masterUpdateInterval) {
         clearInterval(window.masterUpdateInterval);
+        window.masterUpdateInterval = null;
       }
       
-      // 定期的にプレイヤーリストと解答状況を更新（インターバルを保存）
-      window.masterUpdateInterval = setInterval(() => {
-        updatePlayersList();
-        updateAnswersList();
-      }, 5000);
+      // プレイヤーリストと解答状況のリスナーを一度だけ設定（インターバルは使わない）
+      updatePlayersList();
+      updateAnswersList();
+      
+      console.log('マスター画面を表示しました - リアルタイムリスナーを設定しました');
     });
   
     // 登録画面に戻る処理
