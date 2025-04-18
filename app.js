@@ -1814,70 +1814,26 @@ document.addEventListener('DOMContentLoaded', function() {
           
           console.log('ソート済みランキング (上位15名):', topRankings);
           
-          // ランキングの表示
-          const resultsRanking = document.getElementById('results-ranking');
-          
-          // ランキングがない場合
-          if (topRankings.length === 0) {
-            console.log('該当ステージの正解者はまだいません');
-            updateGameStatus('該当ステージの正解者はまだいません');
-          }
-          
-          // ランキングセクションを表示して自動スクロール
-          if (resultsRanking) {
-            resultsRanking.classList.remove('hidden');
-            
-            // ランキングセクションが表示された後に確実に自動スクロール
-            setTimeout(() => {
-              // window.scrollTo を使って画面上部に強制的にスクロール
-              const yOffset = 30; // ページ上部から少し下にスクロール位置を調整
-              const y = resultsRanking.getBoundingClientRect().top + window.pageYOffset - yOffset;
-              
-              window.scrollTo({
-                top: y,
-                behavior: 'smooth'
-              });
-              console.log('ランキングを画面上部に表示するためにスクロールしました');
-              
-              // さらに確実にスクロールするため、少し遅れて再度スクロール
-              setTimeout(() => {
-                const updatedY = resultsRanking.getBoundingClientRect().top + window.pageYOffset - yOffset;
-                window.scrollTo({
-                  top: updatedY,
-                  behavior: 'smooth'
-                });
-                console.log('ランキング位置を再確認してスクロールしました');
-              }, 500);
-            }, 100);
-          }
-          
-          // ランキングを表示
-          showRankingResults(
-            { id: stageId, name: gameState.stageName || '不明なステージ' },
-            topRankings
-          );
+          // ランキングの表示（true=最終結果でポイント付与する）
+          showRankingResults(gameState.stageName || gameState.stageId, topRankings, true);
           
           // Firestoreのゲーム状態にランキングデータを保存
           await gameStateCollection.doc('current').update({
             showRanking: true,
+            isTotalPointsRanking: false,
             rankingStageId: stageId,
             rankingData: topRankings,
             rankingTimestamp: firebase.firestore.FieldValue.serverTimestamp()
           });
-          
-          updateGameStatus('ランキングを表示しました');
-        } else {
-          console.error('ゲーム状態が見つかりません');
-          updateGameStatus('ゲーム状態が見つかりません');
         }
       } catch (error) {
-        console.error('ランキング生成エラー:', error);
+        console.error('ランキングの生成に失敗しました:', error);
         updateGameStatus('ランキングの生成に失敗しました: ' + error.message);
       }
     });
 
     // ランキング結果を表示する関数
-    function showRankingResults(stage, rankings) {
+    function showRankingResults(stage, rankings, isFinalResults = false) {
       // ランキングリストをクリア
       const rankingList = document.getElementById('ranking-list');
       const rankingTitle = document.getElementById('ranking-title');
@@ -2105,11 +2061,15 @@ document.addEventListener('DOMContentLoaded', function() {
             // 以前のスクロール処理を削除（最初に移動済み）
             // 全ての演出は最初のスクロール後に表示される
             
-            // 全てのランキング発表が完了した後に追加ポイントを付与
-            setTimeout(() => {
-              // 上位5位のプレイヤーに追加ポイントを付与
-              distributeRankingBonusPoints(rankingItems);
-            }, 2000);
+            // 全てのランキング発表が完了した後に追加ポイントを付与（結果発表時のみ）
+            if (isFinalResults) {
+              setTimeout(() => {
+                // 上位5位のプレイヤーに追加ポイントを付与
+                distributeRankingBonusPoints(rankingItems);
+              }, 2000);
+            } else {
+              console.log('途中経過発表のため、ボーナスポイントは付与しません');
+            }
           }, delay + 1200);
         }
       }, delay);
@@ -3051,8 +3011,8 @@ document.addEventListener('DOMContentLoaded', function() {
           }, 100);
         }
         
-        // カスタムオブジェクトを作成して途中経過ランキングを表示
-        showRankingResults('総合ポイント', topPlayers);
+        // カスタムオブジェクトを作成して途中経過ランキングを表示（false=途中経過のためポイント付与しない）
+        showRankingResults('総合ポイント', topPlayers, false);
         
         // カスタム表示用に少し修正を加える
         // 秒数表示を総合ポイント表示に変更
