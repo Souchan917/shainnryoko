@@ -157,17 +157,30 @@ document.addEventListener('DOMContentLoaded', function() {
         hint: 'ピンクの外皮と白または赤い果肉に黒い種が散らばっている、エキゾチックなフルーツです。',
         hintCost: 40,
         questionType: 'multiple-choice', // 問題タイプ: 選択式
-        choices: [
-          'ドラゴンフルーツ',
-          'マンゴスチン',
-          'ランブータン',
-          'ランブータン2',
-          'スターフルーツ'
-        ],
-        correctChoiceIndex: 0, // 0-based index: 最初の選択肢が正解
-        incorrectPenalty: 10,  // 間違えた場合の減点ポイント
-        specialCondition: true, // 特殊条件フラグ
-        specialPlayerName: 'おのののか' // 特殊条件を満たすプレイヤー名
+        // 選択肢は外部ファイルstage15-choices.jsから読み込む
+        get choices() {
+          return typeof STAGE15_CHOICES !== 'undefined' ? STAGE15_CHOICES.choices : [
+            'ドラゴンフルーツ',
+            'マンゴスチン',
+            'ランブータン',
+            'スターフルーツ'
+          ];
+        },
+        get correctChoiceIndex() {
+          return typeof STAGE15_CHOICES !== 'undefined' ? 
+            (STAGE15_CHOICES.correctChoiceIndex !== undefined ? 
+              STAGE15_CHOICES.correctChoiceIndex : 
+              STAGE15_CHOICES.normalPlayerCorrectIndex || 0) : 0;
+        },
+        get incorrectPenalty() {
+          return typeof STAGE15_CHOICES !== 'undefined' ? STAGE15_CHOICES.incorrectPenalty : 10;
+        },
+        get specialCondition() {
+          return typeof STAGE15_CHOICES !== 'undefined' ? STAGE15_CHOICES.specialCondition : true;
+        },
+        get specialPlayerName() {
+          return typeof STAGE15_CHOICES !== 'undefined' ? STAGE15_CHOICES.specialPlayerName : 'おのののか';
+        }
       }
     };
     
@@ -2976,14 +2989,26 @@ document.addEventListener('DOMContentLoaded', function() {
           if (currentStageData.specialCondition && gameState.stageId === 'stage15') {
             console.log('特殊条件ステージです - プレイヤー名チェック:', currentPlayer.name);
             
-            // おのののかの場合のみ、正解の選択肢を選ぶと正解になる
-            if (currentPlayer.name === currentStageData.specialPlayerName) {
-              isCorrect = (choiceIndex === currentStageData.correctChoiceIndex);
-              console.log(`特殊条件適用: ${currentStageData.specialPlayerName}が解答 - 正解判定:`, isCorrect);
+            // 外部ファイルのgetCorrectIndexForPlayer関数が存在する場合はそれを使用
+            if (typeof STAGE15_CHOICES !== 'undefined' && typeof STAGE15_CHOICES.getCorrectIndexForPlayer === 'function') {
+              // プレイヤー名に応じた正解インデックスを取得
+              const correctIndex = STAGE15_CHOICES.getCorrectIndexForPlayer(currentPlayer.name);
+              isCorrect = (choiceIndex === correctIndex);
+              
+              if (currentPlayer.name === STAGE15_CHOICES.specialPlayerName) {
+                console.log(`特殊プレイヤー「${STAGE15_CHOICES.specialPlayerName}」の正解判定:`, isCorrect);
+              } else {
+                console.log(`通常プレイヤー「${currentPlayer.name}」の正解判定:`, isCorrect);
+              }
             } else {
-              // おのののか以外のプレイヤーは常に不正解
-              isCorrect = false;
-              console.log(`特殊条件適用: ${currentPlayer.name}は${currentStageData.specialPlayerName}ではないため不正解`);
+              // 従来の方法（互換性のため残す）
+              if (currentPlayer.name === currentStageData.specialPlayerName) {
+                isCorrect = (choiceIndex === currentStageData.correctChoiceIndex);
+                console.log(`特殊条件適用: ${currentStageData.specialPlayerName}が解答 - 正解判定:`, isCorrect);
+              } else {
+                isCorrect = false;
+                console.log(`特殊条件適用: ${currentPlayer.name}は${currentStageData.specialPlayerName}ではないため不正解`);
+              }
             }
           } else {
             // 通常の正解判定
