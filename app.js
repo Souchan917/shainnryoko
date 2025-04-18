@@ -155,7 +155,18 @@ document.addEventListener('DOMContentLoaded', function() {
         imagePath: 'images/puzzles/puzzle15.png',
         pointReward: 150,
         hint: 'ピンクの外皮と白または赤い果肉に黒い種が散らばっている、エキゾチックなフルーツです。',
-        hintCost: 40
+        hintCost: 40,
+        questionType: 'multiple-choice', // 問題タイプ: 選択式
+        choices: [
+          'ドラゴンフルーツ',
+          'マンゴスチン',
+          'ランブータン',
+          'スターフルーツ'
+        ],
+        correctChoiceIndex: 0, // 0-based index: 最初の選択肢が正解
+        incorrectPenalty: 10,  // 間違えた場合の減点ポイント
+        specialCondition: true, // 特殊条件フラグ
+        specialPlayerName: 'おのののか' // 特殊条件を満たすプレイヤー名
       }
     };
     
@@ -2935,8 +2946,25 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log(`選択肢解答時間: ${answerTimeValue}秒`);
           }
           
-          // 正解かどうかを判定
-          const isCorrect = (choiceIndex === currentStageData.correctChoiceIndex);
+          // 特殊条件の処理（ステージ15のみ）
+          let isCorrect = false;
+          
+          if (currentStageData.specialCondition && gameState.stageId === 'stage15') {
+            console.log('特殊条件ステージです - プレイヤー名チェック:', currentPlayer.name);
+            
+            // おのののかの場合のみ、正解の選択肢を選ぶと正解になる
+            if (currentPlayer.name === currentStageData.specialPlayerName) {
+              isCorrect = (choiceIndex === currentStageData.correctChoiceIndex);
+              console.log(`特殊条件適用: ${currentStageData.specialPlayerName}が解答 - 正解判定:`, isCorrect);
+            } else {
+              // おのののか以外のプレイヤーは常に不正解
+              isCorrect = false;
+              console.log(`特殊条件適用: ${currentPlayer.name}は${currentStageData.specialPlayerName}ではないため不正解`);
+            }
+          } else {
+            // 通常の正解判定
+            isCorrect = (choiceIndex === currentStageData.correctChoiceIndex);
+          }
           
           // 選択肢ボタンの表示を更新（正解の場合のみハイライト表示）
           updateChoiceButtonsAfterAnswer(choiceIndex, isCorrect, isCorrect ? currentStageData.correctChoiceIndex : null);
@@ -3033,7 +3061,16 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // 解答結果を表示
             if (choiceResult) {
-              choiceResult.textContent = `不正解です。${penaltyPoints}ポイント減点されました。`;
+              // 特殊条件ステージでの不正解表示
+              if (currentStageData.specialCondition && gameState.stageId === 'stage15' && 
+                  currentPlayer.name !== currentStageData.specialPlayerName && 
+                  choiceIndex === currentStageData.correctChoiceIndex) {
+                // 正解を選んだが特殊条件で不正解扱いの場合、特別なメッセージを表示
+                choiceResult.textContent = `不正解です。${penaltyPoints}ポイント減点されました。`;
+              } else {
+                // 通常の不正解メッセージ
+                choiceResult.textContent = `不正解です。${penaltyPoints}ポイント減点されました。`;
+              }
               choiceResult.className = 'incorrect';
             }
             
@@ -3437,6 +3474,38 @@ document.addEventListener('DOMContentLoaded', function() {
         
         console.log('名前変更完了。新しい名前:', newPlayerName, '新しいID:', newPlayerId);
         
+        // 現在のゲーム状態を取得して、ステージ15の場合は選択肢ボタンをリセット
+        try {
+          const gameStateDoc = await gameStateCollection.doc('current').get();
+          if (gameStateDoc.exists) {
+            const gameState = gameStateDoc.data();
+            
+            // ステージ15でかつ、名前が「おのののか」に変更された場合
+            if (gameState.stageId === 'stage15' && newPlayerName === 'おのののか') {
+              console.log('「おのののか」に名前が変更されました。ステージ15の選択肢をリセットします。');
+              
+              // 選択肢ボタンの状態をリセット
+              resetChoiceButtonsForStage15();
+              
+              // プレイヤーの回答状態もリセット
+              await playersCollection.doc(newPlayerId).update({
+                answered: false,
+                answerCorrect: false,
+                lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+              });
+              
+              // ヒントを表示
+              updateGameStatus('特殊ステージ - あなたは「おのののか」に名前を変更しました。もう一度回答してみましょう！');
+            }
+            else if (gameState.stageId === 'stage15') {
+              // ステージ15だが「おのののか」以外の名前に変更された場合
+              console.log('ステージ15で名前が変更されましたが、「おのののか」ではありません');
+            }
+          }
+        } catch (error) {
+          console.error('ゲーム状態の取得に失敗しました:', error);
+        }
+        
         // 名前変更パネルを完全に非表示にする
         const nameChangePanel = document.getElementById('name-change-panel');
         if (nameChangePanel) {
@@ -3583,6 +3652,28 @@ document.addEventListener('DOMContentLoaded', function() {
         updatePlayersList();
         updateAnswersList();
       }, 5000);
+    }
+
+    // 選択肢ボタンの状態をリセットする関数（ステージ15専用）
+    function resetChoiceButtonsForStage15() {
+      const choiceButtons = document.querySelectorAll('.choice-btn');
+      
+      // すべての選択肢ボタンをリセット（スタイルと無効状態を解除）
+      choiceButtons.forEach(btn => {
+        // ボタンのスタイルをリセット
+        btn.className = 'choice-btn';
+        // 無効状態を解除
+        btn.disabled = false;
+      });
+      
+      // 結果表示もリセット
+      const choiceResult = document.getElementById('choice-result');
+      if (choiceResult) {
+        choiceResult.textContent = '';
+        choiceResult.className = '';
+      }
+      
+      console.log('ステージ15の選択肢ボタンをリセットしました');
     }
 
   } catch (error) {
