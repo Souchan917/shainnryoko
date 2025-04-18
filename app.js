@@ -51,7 +51,7 @@ document.addEventListener('DOMContentLoaded', function() {
       stage5: {
         id: 'stage5',
         name: 'ステージ5',
-        correctAnswer: ['すもももももももものうち', 'スモモモモモモモモノウチ', '李も桃も桃の内'],
+        correctAnswer: ['すももももももものうち', 'スモモモモモモモモノウチ', '李も桃も桃の内'],
         imagePath: 'images/puzzles/puzzle5.png',
         pointReward: 50,
         hint: '夏に食べる大きな緑色のフルーツ。中身は赤くて種があります。',
@@ -64,7 +64,16 @@ document.addEventListener('DOMContentLoaded', function() {
         imagePath: 'images/puzzles/puzzle6.png',
         pointReward: 60,
         hint: '春に収穫される赤い小さなフルーツで、表面に小さな種があります。',
-        hintCost: 18
+        hintCost: 18,
+        questionType: 'multiple-choice', // 問題タイプ: 選択式
+        choices: [
+          'いちご',
+          'レモン',
+          'パイナップル',
+          'ぶどう'
+        ],
+        correctChoiceIndex: 0, // 0-based index: 最初の選択肢が正解
+        incorrectPenalty: 5  // 間違えた場合の減点ポイント
       },
       stage7: {
         id: 'stage7',
@@ -226,6 +235,14 @@ document.addEventListener('DOMContentLoaded', function() {
         submitAnswerBtn.disabled = !enabled;
         // 無効化する場合でも、入力内容はクリアしない
       }
+    }
+    
+    // 選択肢の入力状態の設定
+    function setChoiceInputState(enabled) {
+      const choiceButtons = document.querySelectorAll('.choice-btn');
+      choiceButtons.forEach(btn => {
+        btn.disabled = !enabled;
+      });
     }
     
     // 解答入力欄のリセット
@@ -696,10 +713,9 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     });
     
-    // 解答送信処理
+    // 解答送信ボタンのイベントリスナー
     submitAnswerBtn.addEventListener('click', () => {
-      console.log('解答ボタンがクリックされました');
-      const answerInput = document.getElementById('answer-input');
+      const playerAnswer = document.getElementById('answer-input');
       // 既に正解済みの場合は何もしない
       if (currentPlayer.answerCorrect) {
         console.log('このプレイヤーは既に正解済みです');
@@ -707,8 +723,8 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
       }
       
-      if (answerInput && currentPlayer.id) {
-        const answer = answerInput.value.trim();
+      if (playerAnswer && currentPlayer.id) {
+        const answer = playerAnswer.value.trim();
         if (answer) {
           submitPlayerAnswer(currentPlayer.id, currentPlayer.name, answer);
         } else {
@@ -716,7 +732,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
       }
     });
-  
+    
     // Enter キーで解答送信
     playerAnswer.addEventListener('keypress', (e) => {
       if (e.key === 'Enter') {
@@ -1347,6 +1363,7 @@ document.addEventListener('DOMContentLoaded', function() {
       // この処理は他の条件より優先
       if (gameState.blockAllAnswers) {
         setAnswerInputState(false);
+        setChoiceInputState(false);
         console.log('すべての解答が禁止されているため解答入力を無効化しました');
       }
 
@@ -1371,8 +1388,41 @@ document.addEventListener('DOMContentLoaded', function() {
         if (isNewGame) {
           console.log('新しいステージを検出:', gameState.stageId);
           
-          // 入力欄を有効化
-          setAnswerInputState(true);
+          // 問題タイプに応じて表示を切り替え
+          const currentStageData = STAGES[gameState.stageId];
+          const isMultipleChoice = currentStageData && currentStageData.questionType === 'multiple-choice';
+          
+          if (isMultipleChoice) {
+            console.log('選択式問題を表示します');
+            // 選択式問題の場合
+            showMultipleChoiceQuestion(currentStageData);
+            
+            // 選択式セクションを表示し、自由入力欄を非表示
+            if (document.getElementById('multiple-choice-section')) {
+              document.getElementById('multiple-choice-section').classList.remove('hidden');
+            }
+            if (document.getElementById('answer-section')) {
+              document.getElementById('answer-section').classList.add('hidden');
+            }
+            
+            // 選択肢を有効化
+            setChoiceInputState(true);
+          } else {
+            console.log('自由入力問題を表示します');
+            // 自由入力問題の場合
+            
+            // 自由入力欄を表示し、選択式セクションを非表示
+            if (document.getElementById('multiple-choice-section')) {
+              document.getElementById('multiple-choice-section').classList.add('hidden');
+            }
+            if (document.getElementById('answer-section')) {
+              document.getElementById('answer-section').classList.remove('hidden');
+            }
+            
+            // 入力欄を有効化
+            setAnswerInputState(true);
+          }
+          
           console.log('解答入力を有効化しました - 新しいゲーム開始');
           
           // 前回の解答結果表示をクリア
@@ -1382,6 +1432,13 @@ document.addEventListener('DOMContentLoaded', function() {
           }
           if (answerTime) {
             answerTime.textContent = '';
+          }
+          if (document.getElementById('choice-result')) {
+            document.getElementById('choice-result').textContent = '';
+            document.getElementById('choice-result').className = '';
+          }
+          if (document.getElementById('choice-time')) {
+            document.getElementById('choice-time').textContent = '';
           }
           
           // プレイヤーの解答状態をリセット
@@ -1422,6 +1479,10 @@ document.addEventListener('DOMContentLoaded', function() {
               playerAnswer.disabled = true;
               submitAnswerBtn.disabled = true;
             }
+            
+            // 選択肢も無効化
+            setChoiceInputState(false);
+            
             console.log('解答入力は無効化されたままです - プレイヤーは既に正解済み');
           }
         }
@@ -1448,16 +1509,53 @@ document.addEventListener('DOMContentLoaded', function() {
             gameContentP.classList.add('game-started');
           }
           
-          // 解答欄を表示
-          if (answerSection) {
-            answerSection.classList.remove('hidden');
+          // 問題タイプに応じて適切な解答欄を表示
+          const currentStageData = STAGES[gameState.stageId];
+          const isMultipleChoice = currentStageData && currentStageData.questionType === 'multiple-choice';
+          const multipleChoiceSection = document.getElementById('multiple-choice-section');
+          const answerSection = document.getElementById('answer-section');
+          
+          console.log('問題タイプ判定:', {
+            stageId: gameState.stageId,
+            isMultipleChoice: isMultipleChoice,
+            multipleChoiceSection: !!multipleChoiceSection,
+            answerSection: !!answerSection
+          });
+          
+          if (isMultipleChoice) {
+            // 選択式問題の場合
+            console.log('選択式問題UIを表示します');
             
-            // 新しいステージでなければ、かつプレイヤーが正解していない場合のみ入力欄をクリア
-            if (playerAnswer && (!currentPlayer.answerCorrect || currentPlayer.stageId !== gameState.stageId)) {
-              // 正解済みプレイヤーの場合は入力欄をクリアしない
-              if (!currentPlayer.answerCorrect) {
-                playerAnswer.value = '';
-                playerAnswer.focus();
+            // 選択肢を設定して表示
+            showMultipleChoiceQuestion(currentStageData);
+            
+            // 解答欄は非表示
+            if (answerSection) {
+              answerSection.classList.add('hidden');
+              console.log('テキスト入力欄を非表示にしました');
+            }
+          } else {
+            // 自由入力問題の場合
+            console.log('自由入力問題UIを表示します');
+            
+            // 選択肢セクションを非表示
+            if (multipleChoiceSection) {
+              multipleChoiceSection.classList.add('hidden');
+              console.log('選択肢セクションを非表示にしました');
+            }
+            
+            // 解答欄を表示
+            if (answerSection) {
+              answerSection.classList.remove('hidden');
+              console.log('テキスト入力欄を表示しました');
+              
+              // 新しいステージでなければ、かつプレイヤーが正解していない場合のみ入力欄をクリア
+              if (playerAnswer && (!currentPlayer.answerCorrect || currentPlayer.stageId !== gameState.stageId)) {
+                // 正解済みプレイヤーの場合は入力欄をクリアしない
+                if (!currentPlayer.answerCorrect) {
+                  playerAnswer.value = '';
+                  playerAnswer.focus();
+                }
               }
             }
           }
@@ -1472,12 +1570,14 @@ document.addEventListener('DOMContentLoaded', function() {
             gameContentP.classList.remove('game-started');
           }
           
-          // 解答欄を非表示
-          if (answerSection) {
-            answerSection.classList.add('hidden');
+          // すべての解答欄を非表示
+          if (document.getElementById('answer-section')) {
+            document.getElementById('answer-section').classList.add('hidden');
+          }
+          if (document.getElementById('multiple-choice-section')) {
+            document.getElementById('multiple-choice-section').classList.add('hidden');
           }
           
-          // 解答関連の状態をリセット
           resetAnswerInput();
         }
       }
@@ -2046,6 +2146,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // ゲーム状態の監視を開始
     startGameStateListener();
+    
+    // 選択肢ボタンの初期化
+    initializeChoiceButtons();
+    console.log('選択肢ボタンを初期化しました');
+    
+    // プレイヤーポイントのリアルタイム更新リスナーを開始
+    startPlayerPointsListener();
 
     // ポイント付与ボタンのイベントリスナー
     const distributePointsBtn = document.getElementById('distribute-points-btn');
@@ -2395,6 +2502,302 @@ document.addEventListener('DOMContentLoaded', function() {
         updateGameStatus('正解表示の更新に失敗しました: ' + error.message);
       }
     });
+
+    // 解答入力状態の設定
+    function setAnswerInputState(enabled) {
+      if (playerAnswer && submitAnswerBtn) {
+        playerAnswer.disabled = !enabled;
+        submitAnswerBtn.disabled = !enabled;
+        // 無効化する場合でも、入力内容はクリアしない
+      }
+    }
+    
+    // 選択肢の入力状態の設定
+    function setChoiceInputState(enabled) {
+      const choiceButtons = document.querySelectorAll('.choice-btn');
+      choiceButtons.forEach(btn => {
+        btn.disabled = !enabled;
+      });
+    }
+    
+    // 選択式問題の表示
+    function showMultipleChoiceQuestion(stageData) {
+      if (!stageData || !stageData.choices || !stageData.choices.length) {
+        console.error('選択肢データが不正です', stageData);
+        return;
+      }
+      
+      // 選択肢ボタンを取得
+      const choiceButtons = document.querySelectorAll('.choice-btn');
+      
+      // 選択肢をリセット
+      choiceButtons.forEach((btn, index) => {
+        // クラスとスタイルをリセット
+        btn.className = 'choice-btn';
+        btn.disabled = false;
+        
+        // データを設定
+        if (index < stageData.choices.length) {
+          btn.textContent = stageData.choices[index];
+          btn.style.display = 'flex';
+        } else {
+          // 選択肢が4つ未満の場合は非表示
+          btn.style.display = 'none';
+        }
+      });
+      
+      // 結果表示をリセット
+      const choiceResult = document.getElementById('choice-result');
+      if (choiceResult) {
+        choiceResult.textContent = '';
+        choiceResult.className = '';
+      }
+      
+      // 解答時間表示をリセット
+      const choiceTime = document.getElementById('choice-time');
+      if (choiceTime) {
+        choiceTime.textContent = '';
+      }
+      
+      // 選択肢セクションを表示し、自由入力欄を非表示
+      const multipleChoiceSection = document.getElementById('multiple-choice-section');
+      const answerSection = document.getElementById('answer-section');
+      
+      if (multipleChoiceSection) {
+        multipleChoiceSection.classList.remove('hidden');
+      }
+      if (answerSection) {
+        answerSection.classList.add('hidden');
+      }
+    }
+    
+    // 選択肢クリック時の処理を初期化
+    function initializeChoiceButtons() {
+      const choiceButtons = document.querySelectorAll('.choice-btn');
+      
+      choiceButtons.forEach(btn => {
+        btn.addEventListener('click', async function() {
+          // 既に正解している場合は何もしない
+          if (currentPlayer.answerCorrect) {
+            console.log('このプレイヤーは既に正解済みです');
+            return;
+          }
+          
+          // クリックされた選択肢の番号を取得
+          const choiceIndex = parseInt(this.dataset.choice) - 1;
+          const choiceText = this.textContent;
+          
+          // ゲーム状態を取得
+          const gameState = await getCurrentGameState();
+          if (!gameState || !gameState.gameStarted) {
+            updateGameStatus('ゲームはまだ開始されていません。');
+            return;
+          }
+          
+          // 選択肢処理
+          processChoiceAnswer(choiceIndex, choiceText);
+        });
+      });
+      
+      console.log('選択肢ボタンのイベントリスナーを初期化しました');
+    }
+    
+    // 選択肢の回答処理
+    async function processChoiceAnswer(choiceIndex, choiceText) {
+      try {
+        // ゲーム状態を取得
+        const gameState = await getCurrentGameState();
+        
+        if (gameState && gameState.gameStarted) {
+          // 現在のステージデータを取得
+          const currentStageData = STAGES[gameState.stageId];
+          if (!currentStageData || currentStageData.questionType !== 'multiple-choice') {
+            console.error('選択式問題ではありません', gameState.stageId);
+            return;
+          }
+          
+          console.log(`選択肢[${choiceIndex}]: ${choiceText} が選択されました`);
+          
+          // クリックされたボタンを無効化（再クリック防止）
+          const clickedButton = document.querySelector(`.choice-btn[data-choice="${choiceIndex + 1}"]`);
+          if (clickedButton) {
+            clickedButton.disabled = true;
+          }
+          
+          // 結果表示要素を取得
+          const choiceResult = document.getElementById('choice-result');
+          const choiceTime = document.getElementById('choice-time');
+          
+          // 解答時間を計算
+          let answerTimeValue = 0;
+          if (gameStartTime) {
+            const now = Date.now();
+            answerTimeValue = (now - gameStartTime) / 1000;
+            console.log(`選択肢解答時間: ${answerTimeValue}秒`);
+          }
+          
+          // 正解かどうかを判定
+          const isCorrect = (choiceIndex === currentStageData.correctChoiceIndex);
+          
+          // 選択肢ボタンの表示を更新（正解の場合のみハイライト表示）
+          updateChoiceButtonsAfterAnswer(choiceIndex, isCorrect, isCorrect ? currentStageData.correctChoiceIndex : null);
+          
+          // 解答情報をFirestoreに保存
+          const answerDocId = `${currentPlayer.id}_${Date.now()}`;
+          const answerData = {
+            playerId: currentPlayer.id,
+            playerName: currentPlayer.name,
+            answer: choiceText,
+            choiceIndex: choiceIndex,
+            isCorrect: isCorrect,
+            answerTime: answerTimeValue,
+            answeredAt: firebase.firestore.FieldValue.serverTimestamp(),
+            stageId: gameState.stageId || null,
+            stageName: gameState.stageName || null,
+            pointsEarned: isCorrect ? (gameState.pointReward || 0) : -(currentStageData.incorrectPenalty || 0),
+            answerType: 'multiple-choice'
+          };
+          
+          // 回答をFirestoreに記録
+          await answersCollection.doc(answerDocId).set(answerData);
+          console.log('選択肢回答をFirestoreに記録しました', answerData);
+          
+          if (isCorrect) {
+            // 正解の場合の処理
+            const pointReward = gameState.pointReward || 0;
+            
+            // プレイヤー情報を正解状態に更新
+            currentPlayer.answered = true;
+            currentPlayer.answerCorrect = true;
+            currentPlayer.stageId = gameState.stageId || null;
+            
+            // 正解時にステージのポイントを加算
+            currentPlayer.points += pointReward;
+            
+            // プレイヤー情報更新
+            await playersCollection.doc(currentPlayer.id).update({
+              points: currentPlayer.points,
+              answered: true,
+              answerCorrect: true,
+              lastAnswerTime: answerTimeValue,
+              lastPointReward: pointReward,
+              lastAnswerType: 'multiple-choice',
+              lastAnsweredAt: firebase.firestore.FieldValue.serverTimestamp(),
+              lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
+              stageId: gameState.stageId
+            });
+            
+            // 入力欄を無効化
+            setChoiceInputState(false);
+            
+            // ポイント表示を更新
+            updatePointsDisplay(currentPlayer.points, true);
+            
+            // 結果を表示
+            if (choiceResult) {
+              choiceResult.textContent = `正解です！${pointReward}ポイント獲得！`;
+              choiceResult.className = 'correct';
+            }
+            
+            // 解答時間を表示
+            if (choiceTime) {
+              choiceTime.textContent = `解答時間: ${answerTimeValue.toFixed(2)}秒`;
+            }
+            
+            updateGameStatus(`${currentPlayer.name}さんが選択式問題に正解しました！${pointReward}ポイント獲得！`);
+          } else {
+            // 不正解の場合
+            console.log(`選択肢不正解: 選択 ${choiceIndex} (正解: ${currentStageData.correctChoiceIndex})`);
+            
+            // 間違えた場合のペナルティポイントを適用
+            const penaltyPoints = currentStageData.incorrectPenalty || 0;
+            if (penaltyPoints > 0) {
+              // ポイントを減算
+              currentPlayer.points = Math.max(0, currentPlayer.points - penaltyPoints);
+              
+              // ポイント表示を更新
+              updatePointsDisplay(currentPlayer.points, true);
+            }
+            
+            // プレイヤー情報の更新
+            await playersCollection.doc(currentPlayer.id).update({
+              points: currentPlayer.points,
+              answered: true,
+              answerCorrect: false,
+              lastAnswer: choiceText,
+              lastAnswerTime: answerTimeValue,
+              lastAnswerType: 'multiple-choice',
+              lastAnsweredAt: firebase.firestore.FieldValue.serverTimestamp(),
+              lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
+              stageId: gameState.stageId
+            });
+            
+            // 解答結果を表示
+            if (choiceResult) {
+              choiceResult.textContent = `不正解です。${penaltyPoints}ポイント減点されました。`;
+              choiceResult.className = 'incorrect';
+            }
+            
+            // 解答時間を表示
+            if (choiceTime) {
+              choiceTime.textContent = `解答時間: ${answerTimeValue.toFixed(2)}秒`;
+            }
+            
+            updateGameStatus(`${currentPlayer.name}さんの選択式問題の回答は不正解です。${penaltyPoints}ポイント減点されました。`);
+          }
+        } else {
+          updateGameStatus('ゲームはまだ開始されていません。');
+        }
+      } catch (error) {
+        console.error('選択肢回答の処理中にエラーが発生しました:', error);
+        updateGameStatus('選択肢回答の処理中にエラーが発生しました。');
+      }
+    }
+    
+    // 回答後の選択肢ボタンの表示更新
+    function updateChoiceButtonsAfterAnswer(selectedIndex, isCorrect, correctIndex) {
+      const choiceButtons = document.querySelectorAll('.choice-btn');
+      
+      choiceButtons.forEach((btn, index) => {
+        // 選択されたボタン
+        if (index === selectedIndex) {
+          if (isCorrect) {
+            btn.classList.add('correct');
+          } else {
+            btn.classList.add('incorrect');
+          }
+        }
+        
+        // 不正解の場合、正解のボタンをハイライト表示するかどうかは引数で制御
+        if (correctIndex !== null && index === correctIndex && index !== selectedIndex) {
+          btn.classList.add('correct');
+        }
+      });
+    }
+    
+    // 解答入力欄のリセット
+    function resetAnswerInput() {
+      if (playerAnswer) playerAnswer.value = '';
+      if (answerResult) {
+        answerResult.textContent = '';
+        answerResult.className = '';
+      }
+      if (answerTime) answerTime.textContent = '';
+    }
+
+    // 現在のゲーム状態を取得
+    async function getCurrentGameState() {
+      try {
+        const doc = await gameStateCollection.doc('current').get();
+        if (doc.exists) {
+          return doc.data();
+        }
+        return null;
+      } catch (error) {
+        console.error('ゲーム状態の取得に失敗しました:', error);
+        return null;
+      }
+    }
 
   } catch (error) {
     console.error("App initialization error:", error);
