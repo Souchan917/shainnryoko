@@ -1829,4 +1829,69 @@ button:hover {
     max-width: 350px;
     margin-left: auto;
     margin-right: auto;
+}
+
+/* 解説オーバーレイ関連のスタイル */
+#explanation-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.8);
+    z-index: 1000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#explanation-overlay.hidden {
+    display: none;
+}
+
+#explanation-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+}
+
+#explanation-image {
+    max-width: 90%;
+    max-height: 90%;
+    object-fit: contain;
+}
+
+/* 解説操作ボタン */
+#show-explanation-btn {
+    background-color: #9c27b0;
+}
+
+#show-explanation-btn:hover {
+    background-color: #7b1fa2;
+}
+
+#next-explanation-btn,
+#prev-explanation-btn {
+    background-color: #7986cb;
+}
+
+#next-explanation-btn:hover,
+#prev-explanation-btn:hover {
+    background-color: #5c6bc0;
+}
+
+#end-explanation-btn {
+    background-color: #f44336;
+}
+
+#end-explanation-btn:hover {
+    background-color: #d32f2f;
+}
+
+.warning-message {
+    margin-top: 10px;
+    font-size: 12px;
+    color: #f44336;
 } 

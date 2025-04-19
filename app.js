@@ -352,6 +352,14 @@ document.addEventListener('DOMContentLoaded', function() {
     const connectedPlayersList = document.getElementById('connected-players');
     const backToRegistrationBtns = document.querySelectorAll('#back-to-registration');
     
+    // 解説関連の要素
+    const showExplanationBtn = document.getElementById('show-explanation-btn');
+    const nextExplanationBtn = document.getElementById('next-explanation-btn');
+    const prevExplanationBtn = document.getElementById('prev-explanation-btn');
+    const endExplanationBtn = document.getElementById('end-explanation-btn');
+    const explanationOverlay = document.getElementById('explanation-overlay');
+    const explanationImage = document.getElementById('explanation-image');
+    
     // カウントダウン関連の要素
     const countdownOverlay = document.querySelector('.countdown-overlay');
     const countdownNumber = document.querySelector('.countdown-number');
@@ -1350,6 +1358,27 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
               // 通常のゲーム状態更新
               updateGameDisplay(gameState);
+              
+              // 解説表示処理
+              if (gameState.showExplanation === true && explanationOverlay) {
+                // 解説インデックスを取得（未定義の場合は0）
+                const explanationIndex = gameState.explanationIndex !== undefined ? gameState.explanationIndex : 0;
+                
+                // 解説画像のパスを生成
+                const explanationPath = `images/explanations/explanation${explanationIndex + 1}.png`;
+                
+                // 解説画像を設定
+                if (explanationImage) {
+                  explanationImage.src = explanationPath;
+                  explanationImage.alt = `解説${explanationIndex + 1}`;
+                }
+                
+                // 解説オーバーレイを表示
+                explanationOverlay.classList.remove('hidden');
+              } else if (explanationOverlay) {
+                // 解説表示フラグがfalseの場合は非表示にする
+                explanationOverlay.classList.add('hidden');
+              }
             }
           } else {
             console.log("データベースにゲーム状態がありません");
@@ -3736,6 +3765,88 @@ document.addEventListener('DOMContentLoaded', function() {
       }
       
       console.log('ステージ15の選択肢ボタンをリセットしました');
+    }
+
+    // マスター画面の解説関連ボタンイベント
+    if (showExplanationBtn) {
+      showExplanationBtn.addEventListener('click', async () => {
+        try {
+          // Firestoreのゲーム状態を更新
+          await gameStateCollection.doc('current').update({
+            showExplanation: true,
+            explanationIndex: 0
+          });
+          
+          updateGameStatus('解説モードを開始しました');
+        } catch (error) {
+          console.error('解説モード開始中にエラーが発生しました:', error);
+          updateGameStatus('解説モード開始中にエラーが発生しました');
+        }
+      });
+    }
+    
+    if (nextExplanationBtn) {
+      nextExplanationBtn.addEventListener('click', async () => {
+        try {
+          // 現在のゲーム状態を取得
+          const gameState = await getCurrentGameState();
+          
+          // 現在の解説インデックスを取得（未定義の場合は0）
+          const currentIndex = gameState.explanationIndex !== undefined ? gameState.explanationIndex : 0;
+          
+          // インデックスをインクリメント
+          await gameStateCollection.doc('current').update({
+            showExplanation: true,
+            explanationIndex: currentIndex + 1
+          });
+          
+          updateGameStatus(`解説 ${currentIndex + 2} に進みました`);
+        } catch (error) {
+          console.error('解説インデックス更新中にエラーが発生しました:', error);
+          updateGameStatus('解説インデックス更新中にエラーが発生しました');
+        }
+      });
+    }
+    
+    if (prevExplanationBtn) {
+      prevExplanationBtn.addEventListener('click', async () => {
+        try {
+          // 現在のゲーム状態を取得
+          const gameState = await getCurrentGameState();
+          
+          // 現在の解説インデックスを取得（未定義の場合は0）
+          const currentIndex = gameState.explanationIndex !== undefined ? gameState.explanationIndex : 0;
+          
+          // インデックスをデクリメント（0未満にはならないように）
+          const newIndex = Math.max(0, currentIndex - 1);
+          
+          await gameStateCollection.doc('current').update({
+            showExplanation: true,
+            explanationIndex: newIndex
+          });
+          
+          updateGameStatus(`解説 ${newIndex + 1} に戻りました`);
+        } catch (error) {
+          console.error('解説インデックス更新中にエラーが発生しました:', error);
+          updateGameStatus('解説インデックス更新中にエラーが発生しました');
+        }
+      });
+    }
+    
+    if (endExplanationBtn) {
+      endExplanationBtn.addEventListener('click', async () => {
+        try {
+          // 解説モードを終了する
+          await gameStateCollection.doc('current').update({
+            showExplanation: false
+          });
+          
+          updateGameStatus('解説モードを終了しました');
+        } catch (error) {
+          console.error('解説モード終了中にエラーが発生しました:', error);
+          updateGameStatus('解説モード終了中にエラーが発生しました');
+        }
+      });
     }
 
   } catch (error) {
