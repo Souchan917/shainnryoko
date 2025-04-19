@@ -1894,4 +1894,26 @@ button:hover {
     margin-top: 10px;
     font-size: 12px;
     color: #f44336;
+}
+
+/* 名前表示設定チェックボックス */
+.privacy-option {
+    margin: 15px auto;
+    text-align: left;
+    max-width: 300px;
+    padding: 5px;
+    font-size: 14px;
+}
+
+.privacy-option label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+}
+
+.privacy-option input[type="checkbox"] {
+    margin-right: 8px;
+    width: auto;
+    cursor: pointer;
 } 

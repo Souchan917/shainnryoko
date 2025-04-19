@@ -346,6 +346,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const showTotalRankingBtn = document.getElementById('show-total-ranking'); // 途中経過発表ボタン
     const showResultsBtn = document.getElementById('show-results'); // 結果発表ボタン
     const resetGameBtn = document.getElementById('reset-game'); // リセットボタン
+    const showNameCheckbox = document.getElementById('show-name-checkbox'); // 名前表示設定チェックボックス
+    const changeShowNameCheckbox = document.getElementById('change-show-name-checkbox'); // 名前変更画面のチェックボックス
     const imageContainer = document.getElementById('image-container');
     const answerImageContainer = document.getElementById('answer-image-container'); // 正解画像コンテナ
     const statusMessage = document.getElementById('status-message') || document.createElement('div'); // ステータスメッセージ要素がない場合の対策
@@ -452,6 +454,9 @@ document.addEventListener('DOMContentLoaded', function() {
       // プレイヤー名からIDを生成（同じ名前なら同じIDになる）
       const playerId = generatePlayerIdFromName(playerName);
       
+      // 名前表示設定を取得
+      const showName = showNameCheckbox ? showNameCheckbox.checked : true;
+      
       // まず既存のプレイヤー情報を取得
       playersCollection.doc(playerId).get()
         .then(doc => {
@@ -470,7 +475,8 @@ document.addEventListener('DOMContentLoaded', function() {
             // 復元した情報をFirestoreに書き戻す（活動状態を更新）
             return playersCollection.doc(playerId).update({
               isActive: true,
-              lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+              lastLogin: firebase.firestore.FieldValue.serverTimestamp(),
+              showName: showName // 名前表示設定を更新
             });
           } else {
             // 新規プレイヤーの場合は新しく作成
@@ -486,7 +492,8 @@ document.addEventListener('DOMContentLoaded', function() {
               answered: false,
               answerCorrect: false,
               points: POINTS_CONFIG.initial,
-              stageId: null // 現在のステージIDを追跡
+              stageId: null, // 現在のステージIDを追跡
+              showName: showName // 名前表示設定を追加
             };
             
             // Firestoreに新規プレイヤー情報を保存
@@ -600,51 +607,31 @@ document.addEventListener('DOMContentLoaded', function() {
           if (currentPlayerNameDisplay) {
             currentPlayerNameDisplay.textContent = currentPlayer.name;
           }
-          // 新規名前入力欄を空にする
+          
+          // 新しい名前入力欄を初期化
           if (newPlayerNameInput) {
             newPlayerNameInput.value = '';
+            newPlayerNameInput.placeholder = '新しいニックネームを入力してください';
           }
           
-          // 名前変更パネルの表示スタイルをリセット
-          const nameChangePanel = document.getElementById('name-change-panel');
-          if (nameChangePanel) {
-            nameChangePanel.style.display = ''; // display: none を削除
-          }
-          
-          // 名前変更画面を表示
-          showScreen('name-change-panel');
-          return;
-        }
-        
-        // 現在のプレイヤーを非アクティブに設定（削除はしない）
-        if (currentPlayer.id) {
-          playersCollection.doc(currentPlayer.id).update({
-            isActive: false,
-            lastLogout: firebase.firestore.FieldValue.serverTimestamp()
-          })
-            .then(() => {
-              console.log('プレイヤーを非アクティブに設定しました');
-              // 現在のプレイヤー情報をリセット（IDと名前は保持）
-              const playerName = currentPlayer.name;
-              const playerId = currentPlayer.id;
-              currentPlayer = {
-                id: playerId,
-                name: playerName,
-                isActive: false,
-                joinedAt: null,
-                answered: false,
-                answerCorrect: false,
-                points: POINTS_CONFIG.initial,
-                stageId: null // 現在のステージIDをリセット
-              };
-            })
-            .catch(error => {
-              console.error('プレイヤー情報の更新に失敗:', error);
+          // 名前表示設定をFirestoreの値で更新
+          if (changeShowNameCheckbox && currentPlayer.id) {
+            playersCollection.doc(currentPlayer.id).get().then(doc => {
+              if (doc.exists) {
+                const playerData = doc.data();
+                // showNameが未設定の場合はデフォルトでtrue
+                changeShowNameCheckbox.checked = playerData.showName !== undefined ? playerData.showName : true;
+              }
+            }).catch(error => {
+              console.error('プレイヤー情報の取得に失敗しました:', error);
             });
+          }
+          
+          showScreen('name-change-panel');
+        } else {
+          // それ以外の場合は登録画面に戻る
+          showScreen('player-registration');
         }
-        
-        // 登録画面に戻る
-        showScreen('player-registration');
       });
     });
   
@@ -676,7 +663,10 @@ document.addEventListener('DOMContentLoaded', function() {
             // プレイヤー名とポイント
             const nameSpan = document.createElement('span');
             nameSpan.className = 'player-name';
-            nameSpan.textContent = player.name;
+            
+            // 名前表示設定に基づいて表示する名前を決定
+            const displayName = player.showName !== false ? player.name : '匿名';
+            nameSpan.textContent = displayName;
             
             const pointsSpan = document.createElement('span');
             pointsSpan.className = 'player-points-list';
@@ -817,10 +807,13 @@ document.addEventListener('DOMContentLoaded', function() {
               option.value = doc.id;
               // IDを含めて表示（マスター用）
               const shortOptionId = player.id.split('_').slice(1, 3).join('_');
-              let optionText = `${player.name} [${shortOptionId}] (${player.points || 0}pt)`;
+              
+              // 名前表示設定に基づいて表示する名前を決定
+              const selectorDisplayName = player.showName !== false ? player.name : '匿名';
+              let optionText = `${selectorDisplayName} [${shortOptionId}] (${player.points || 0}pt)`;
               
               // 名前変更履歴がある場合は追加
-              if (player.previousName) {
+              if (player.previousName && player.showName !== false) {
                 optionText += ` ← ${player.previousName}`;
               }
               
@@ -2115,187 +2108,206 @@ document.addEventListener('DOMContentLoaded', function() {
       // ランキングアイテムを作成しておく（表示はまだしない）
       const rankingItems = [];
       
-      // ランキングを作成
-      rankings.forEach((result, index) => {
-        const rank = index + 1;
-        const listItem = document.createElement('li');
-        listItem.className = 'ranking-item';
+      // 各プレイヤーの名前表示設定を確認するための処理
+      const fetchPlayerSettings = async () => {
+        // 全プレイヤーの名前表示設定を一度に取得
+        const playerSettings = {};
         
-        // 上位3位にはクラスを追加
-        if (rank === 1) {
-          listItem.classList.add('top-1');
-          listItem.setAttribute('data-rank', '1');
-          // 1位は一番上に配置
-          listItem.style.order = '1';
+        // まず全プレイヤーのIDを集める
+        const playerIds = rankings.map(result => result.playerId);
+        
+        // 重複を削除
+        const uniquePlayerIds = [...new Set(playerIds)];
+        
+        // 各プレイヤーの設定を取得
+        for (const playerId of uniquePlayerIds) {
+          try {
+            const doc = await playersCollection.doc(playerId).get();
+            if (doc.exists) {
+              const playerData = doc.data();
+              playerSettings[playerId] = {
+                showName: playerData.showName !== false
+              };
+            } else {
+              // ドキュメントが存在しない場合はデフォルト値
+              playerSettings[playerId] = {
+                showName: true
+              };
+            }
+          } catch (error) {
+            console.error(`プレイヤー ${playerId} の設定取得エラー:`, error);
+            // エラー時はデフォルト値
+            playerSettings[playerId] = {
+              showName: true
+            };
+          }
         }
-        else if (rank === 2) {
-          listItem.classList.add('top-2');
-          listItem.setAttribute('data-rank', '2');
-          // 2位は2番目に配置
-          listItem.style.order = '2';
-        }
-        else if (rank === 3) {
-          listItem.classList.add('top-3');
-          listItem.setAttribute('data-rank', '3');
-          // 3位は3番目に配置
-          listItem.style.order = '3';
-        } else {
-          listItem.setAttribute('data-rank', rank);
-          // 4位以降は順位に応じて下に配置
-          listItem.style.order = String(rank);
-        }
         
-        // 自分の結果にはクラスを追加
-        if (result.playerId === currentPlayer.id) {
-          listItem.classList.add('my-result');
-        }
-        
-        // アニメーション用のクラスを追加
-        listItem.classList.add('hidden');
-        
-        // 内容を構築
-        listItem.innerHTML = `
-          <div class="rank">${rank}位</div>
-          <div class="player-name">${result.playerName}</div>
-          <div class="answer-time">${result.answerTime.toFixed(2)}秒</div>
-          <div class="earned-points">+${result.pointsEarned}pt</div>
-        `;
-        
-        // 配列に追加
-        rankingItems.push({
-          element: listItem,
-          rank: rank,
-          playerId: result.playerId,
-          playerName: result.playerName
-        });
-      });
-      
-      // 演出のために1位、2位、3位とそれ以外に分ける
-      const firstPlace = rankingItems.find(item => item.rank === 1);
-      const secondPlace = rankingItems.find(item => item.rank === 2);
-      const thirdPlace = rankingItems.find(item => item.rank === 3);
-      const otherPlaces = rankingItems.filter(item => item.rank > 3);
-      
-      // ランキングタイトルを演出的に変更
-      if (rankingTitle) {
-        rankingTitle.textContent = `${stageName} ランキング発表`;
-        rankingTitle.classList.add('title-announcing');
-      }
-      
-      // 開始の演出
-      updateGameStatus('ランキング発表を開始します...');
-      
-      // 全アイテムをDOMに追加（表示はhiddenのまま）
-      // DOM配置とアニメーションを分離して、順位の配置を正しく行う
-      rankingItems.forEach(item => {
-        rankingList.appendChild(item.element);
-      });
-      
-      // アニメーションのタイミングを設定
-      let delay = 800; // 開始時の遅延（ミリ秒） - 演出のため長めに
-      const itemDelay = 200; // 各アイテム間の遅延を0.2秒に統一
-      const specialDelay = 600; // 特別な順位（TOP3）の間の遅延
-      
-      // 演出開始 - 下位から順に表示
-      updateGameStatus('まずは下位から発表します...');
-      
-      // 下位からの表示前に少し待つ
-      setTimeout(() => {
-        // 下位から順に表示（15位から4位まで）
-        if (otherPlaces.length > 0) {
-          // 順位の降順（大きい順）に並び替え - 15位、14位、...という順序に
-          const sortedOthers = [...otherPlaces].sort((a, b) => b.rank - a.rank);
+        // ランキングを作成
+        rankings.forEach((result, index) => {
+          const rank = index + 1;
+          const listItem = document.createElement('li');
+          listItem.className = 'ranking-item';
           
-          // 一つずつ順番に表示
-          sortedOthers.forEach((item, index) => {
-            setTimeout(() => {
-              item.element.classList.remove('hidden');
-              item.element.classList.add('reveal');
-              
-              // 最後の項目表示後に少し間を開ける
-              if (index === sortedOthers.length - 1) {
-                updateGameStatus('続いて上位3名の発表です...');
-              }
-            }, index * itemDelay);
+          // 上位3位にはクラスを追加
+          if (rank === 1) {
+            listItem.classList.add('top-1');
+            listItem.setAttribute('data-rank', '1');
+            // 1位は一番上に配置
+            listItem.style.order = '1';
+          }
+          else if (rank === 2) {
+            listItem.classList.add('top-2');
+            listItem.setAttribute('data-rank', '2');
+            // 2位は2番目に配置
+            listItem.style.order = '2';
+          }
+          else if (rank === 3) {
+            listItem.classList.add('top-3');
+            listItem.setAttribute('data-rank', '3');
+            // 3位は3番目に配置
+            listItem.style.order = '3';
+          } else {
+            listItem.setAttribute('data-rank', rank);
+            // 4位以降は順位に応じて下に配置
+            listItem.style.order = String(rank);
+          }
+          
+          // 自分の結果にはクラスを追加
+          if (result.playerId === currentPlayer.id) {
+            listItem.classList.add('my-result');
+          }
+          
+          // アニメーション用のクラスを追加
+          listItem.classList.add('hidden');
+          
+          // プレイヤーの名前表示設定に基づいて表示名を決定
+          const setting = playerSettings[result.playerId] || { showName: true };
+          const displayName = setting.showName ? result.playerName : '匿名';
+          
+          // 内容を構築
+          listItem.innerHTML = `
+            <div class="rank">${rank}位</div>
+            <div class="player-name">${displayName}</div>
+            <div class="answer-time">${result.answerTime.toFixed(2)}秒</div>
+            <div class="earned-points">+${result.pointsEarned}pt</div>
+          `;
+          
+          // 配列に追加
+          rankingItems.push({
+            element: listItem,
+            rank: rank,
+            playerId: result.playerId,
+            playerName: displayName
           });
           
-          // 次に3位を表示する準備（下位表示後に少し間を空ける）
-          delay += (sortedOthers.length * itemDelay) + 1000;
-        } else {
-          // 下位がいない場合は直接3位からスタート
-          updateGameStatus('上位3名の発表です...');
-          delay += 500;
+          // DOMに追加
+          rankingList.appendChild(listItem);
+        });
+        
+        // 演出のために1位、2位、3位とそれ以外に分ける
+        const firstPlace = rankingItems.find(item => item.rank === 1);
+        const secondPlace = rankingItems.find(item => item.rank === 2);
+        const thirdPlace = rankingItems.find(item => item.rank === 3);
+        const otherPlaces = rankingItems.filter(item => item.rank > 3);
+        
+        // ランキングタイトルを演出的に変更
+        if (rankingTitle) {
+          rankingTitle.textContent = `${stageName} ランキング発表`;
+          rankingTitle.classList.add('title-announcing');
         }
         
-        // TOP3を順番に表示する（3位→2位→1位）
-        if (thirdPlace) {
-          setTimeout(() => {
-            // 表示する時に効果音を鳴らしたりする場合はここに追加
-            updateGameStatus('🥉 3位発表！');
-            setTimeout(() => {
-              document.querySelector('[data-rank="3"]').classList.remove('hidden');
-              document.querySelector('[data-rank="3"]').classList.add('reveal-bronze');
-            }, 300); // 効果音のための少しの遅延
-          }, delay);
-          delay += specialDelay;
-        }
+        // 開始の演出
+        updateGameStatus('ランキング発表を開始します...');
         
-        if (secondPlace) {
-          setTimeout(() => {
-            updateGameStatus('🥈 2位発表！');
-            setTimeout(() => {
-              document.querySelector('[data-rank="2"]').classList.remove('hidden');
-              document.querySelector('[data-rank="2"]').classList.add('reveal-silver');
-            }, 300);
-          }, delay);
-          delay += specialDelay;
-        }
+        // アニメーションのタイミングを設定
+        let delay = 800; // 開始時の遅延（ミリ秒） - 演出のため長めに
+        const itemDelay = 200; // 各アイテム間の遅延を0.2秒に統一
+        const specialDelay = 600; // 特別な順位（TOP3）の間の遅延
         
-        // 1位の発表前に少し間を空ける
-        delay += 200;
+        // 演出開始 - 下位から順に表示
+        updateGameStatus('まずは下位から発表します...');
         
-        if (firstPlace) {
-          // 1位発表前のカウントダウン効果
-          setTimeout(() => {
-            updateGameStatus('そして栄えある優勝者は...');
-          }, delay);
-          
-          // カウントダウンを短縮（約1秒に）
-          setTimeout(() => { updateGameStatus('3...'); }, delay + 300);
-          setTimeout(() => { updateGameStatus('2...'); }, delay + 600);
-          setTimeout(() => { updateGameStatus('1...'); }, delay + 900);
-          
-          // 1位の発表（特別な演出付き）
-          setTimeout(() => {
-            document.querySelector('[data-rank="1"]').classList.remove('hidden');
-            document.querySelector('[data-rank="1"]').classList.add('reveal-gold');
-            updateGameStatus('🏆 優勝者発表！おめでとうございます！🎉');
+        // 下位からの表示前に少し待つ
+        setTimeout(() => {
+          // 下位から順に表示（15位から4位まで）
+          if (otherPlaces.length > 0) {
+            // 順位の降順（大きい順）に並び替え - 15位、14位、...という順序に
+            const sortedOthers = [...otherPlaces].sort((a, b) => b.rank - a.rank);
             
-            // 背景でキラキラエフェクトなどを表示したい場合はここで追加
-            const resultSection = document.getElementById('results-ranking');
-            resultSection.classList.add('winner-announced');
-            
-            // ランキングタイトルも更新
-            if (rankingTitle) {
-              rankingTitle.textContent = `${stageName} 優勝者：${firstPlace.element.querySelector('.player-name').textContent}`;
-              rankingTitle.classList.add('title-winner-announced');
-            }
-            
-            // 以前のスクロール処理を削除（最初に移動済み）
-            // 全ての演出は最初のスクロール後に表示される
-            
-            // 全てのランキング発表が完了した後に追加ポイントを付与（結果発表時のみ）
-            if (isFinalResults) {
+            // 一つずつ順番に表示
+            sortedOthers.forEach((item, index) => {
               setTimeout(() => {
-                // 上位5位のプレイヤーに追加ポイントを付与
-                distributeRankingBonusPoints(rankingItems);
-              }, 2000);
-            } else {
-              console.log('途中経過発表のため、ボーナスポイントは付与しません');
-            }
-          }, delay + 1200);
-        }
-      }, delay);
+                item.element.classList.remove('hidden');
+                item.element.classList.add('reveal');
+                
+                // 最後の項目表示後に少し間を開ける
+                if (index === sortedOthers.length - 1) {
+                  updateGameStatus('続いて上位3名の発表です...');
+                }
+              }, index * itemDelay);
+            });
+            
+            // 次に3位を表示する準備（下位表示後に少し間を空ける）
+            delay += (sortedOthers.length * itemDelay) + 1000;
+          } else {
+            // 下位がいない場合は直接3位からスタート
+            updateGameStatus('上位3名の発表です...');
+            delay += 500;
+          }
+          
+          // TOP3を順番に表示する（3位→2位→1位）
+          if (thirdPlace) {
+            setTimeout(() => {
+              // 表示する時に効果音を鳴らしたりする場合はここに追加
+              updateGameStatus('🥉 3位発表！');
+              setTimeout(() => {
+                document.querySelector('[data-rank="3"]').classList.remove('hidden');
+                document.querySelector('[data-rank="3"]').classList.add('reveal-bronze');
+              }, 300); // 効果音のための少しの遅延
+            }, delay);
+            delay += specialDelay;
+          }
+          
+          if (secondPlace) {
+            setTimeout(() => {
+              updateGameStatus('🥈 2位発表！');
+              setTimeout(() => {
+                document.querySelector('[data-rank="2"]').classList.remove('hidden');
+                document.querySelector('[data-rank="2"]').classList.add('reveal-silver');
+              }, 300);
+            }, delay);
+            delay += specialDelay;
+          }
+          
+          if (firstPlace) {
+            setTimeout(() => {
+              updateGameStatus('🥇 1位発表！');
+              setTimeout(() => {
+                document.querySelector('[data-rank="1"]').classList.remove('hidden');
+                document.querySelector('[data-rank="1"]').classList.add('reveal-gold');
+              }, 300);
+              
+              // 1位の特別な演出（最終結果の場合のみ）
+              if (isFinalResults && firstPlace.element) {
+                setTimeout(() => {
+                  firstPlace.element.classList.add('winner-announced');
+                  if (rankingTitle) {
+                    rankingTitle.textContent = `優勝者: ${firstPlace.playerName}`;
+                    rankingTitle.classList.add('title-winner-announced');
+                  }
+                  updateGameStatus(`優勝者: ${firstPlace.playerName} 🏆`);
+                }, 1500);
+              }
+            }, delay);
+          }
+        }, 1000);
+      };
+      
+      // 非同期処理を実行
+      fetchPlayerSettings().catch(error => {
+        console.error('ランキング表示中にエラーが発生しました:', error);
+      });
     }
 
     // ランキング上位者に追加ポイントを付与する関数
@@ -3485,144 +3497,121 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // 名前変更処理
-    changeNameBtn.addEventListener('click', async () => {
-      const newPlayerName = newPlayerNameInput.value.trim();
+    changeNameBtn.addEventListener('click', () => {
+      const newName = newPlayerNameInput.value.trim();
       
-      if (!newPlayerName) {
+      if (!newName) {
         alert('新しい名前を入力してください');
         return;
       }
       
-      if (newPlayerName === currentPlayer.name) {
-        alert('現在の名前と同じです');
+      if (!currentPlayer || !currentPlayer.id) {
+        alert('エラー: プレイヤー情報が見つかりません');
         return;
       }
       
-      try {
-        // 名前変更処理の開始
-        console.log('名前変更処理を開始します。現在の名前:', currentPlayer.name, '新しい名前:', newPlayerName);
-        
-        // 新しい名前のIDを生成
-        const newPlayerId = generatePlayerIdFromName(newPlayerName);
-        
-        // 現在のプレイヤーデータを取得
-        const currentPlayerDoc = await playersCollection.doc(currentPlayer.id).get();
-        if (!currentPlayerDoc.exists) {
-          console.error('プレイヤーデータの取得に失敗しました');
-          // エラー時もゲーム画面に戻る
-          showScreen('player-panel');
-          return;
-        }
-        
-        // 現在のプレイヤーデータを取得
-        const playerData = currentPlayerDoc.data();
-        
-        // 名前変更履歴を作成
-        let nameHistory = [];
-        if (playerData.previousName) {
-          // 既存の履歴がある場合はそれを活用
-          nameHistory = playerData.nameHistory || [];
-          nameHistory.unshift(playerData.previousName); // 最新の旧名を先頭に追加
-        }
-        // 履歴が長すぎる場合は古いものを削除（最大10件まで保持）
-        if (nameHistory.length > 9) {
-          nameHistory = nameHistory.slice(0, 9);
-        }
-        
-        // 新しいプレイヤーデータを作成（ID、名前を更新し、他のデータは引き継ぐ）
-        const newPlayerData = {
-          ...playerData,
-          id: newPlayerId,
-          name: newPlayerName,
-          nameUpdatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-          previousName: currentPlayer.name,
-          previousId: currentPlayer.id,
-          nameHistory: nameHistory // 名前変更履歴を保存
-        };
-        
-        // 新しいプレイヤーデータをFirestoreに保存
-        await playersCollection.doc(newPlayerId).set(newPlayerData);
-        
-        // 現在のプレイヤーデータを削除
-        await playersCollection.doc(currentPlayer.id).delete();
-        
-        // 現在のプレイヤー情報を更新
-        currentPlayer = {
-          ...newPlayerData,
-          id: newPlayerId,
-          name: newPlayerName
-        };
-        
-        // ローカルストレージのプレイヤー情報も更新
-        saveToLocalStorage('currentPlayer', {
-          id: newPlayerId,
-          name: newPlayerName,
-          points: currentPlayer.points || POINTS_CONFIG.initial
-        });
-        
-        // プレイヤー表示を同期（名前とポイント）
-        syncPlayerDisplay();
-        
-        console.log('名前変更完了。新しい名前:', newPlayerName, '新しいID:', newPlayerId);
-        
-        // 現在のゲーム状態を取得して、ステージ15の場合は選択肢ボタンをリセット
-        try {
-          const gameStateDoc = await gameStateCollection.doc('current').get();
-          if (gameStateDoc.exists) {
-            const gameState = gameStateDoc.data();
+      // 名前表示設定の値を取得
+      const showName = changeShowNameCheckbox ? changeShowNameCheckbox.checked : true;
+      
+      // 履歴用に現在の名前を保存
+      const oldName = currentPlayer.name;
+      let nameHistory = [];
+      
+      // 既存のプレイヤー情報を取得して名前履歴を更新
+      playersCollection.doc(currentPlayer.id).get()
+        .then(doc => {
+          if (doc.exists) {
+            const existingData = doc.data();
             
-            // ステージ15でかつ、名前が「おのののか」に変更された場合
-            if (gameState.stageId === 'stage15' && newPlayerName === 'おのののか') {
-              console.log('「おのののか」に名前が変更されました。ステージ15の選択肢をリセットします。');
-              
-              // 選択肢ボタンの状態をリセット
-              resetChoiceButtonsForStage15();
-              
-              // プレイヤーの回答状態もリセット
-              await playersCollection.doc(newPlayerId).update({
-                answered: false,
-                answerCorrect: false,
-                lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
-              });
-              
-              // ヒントを表示
-              updateGameStatus('特殊ステージ - あなたは「おのののか」に名前を変更しました。もう一度回答してみましょう！');
+            // 名前履歴を取得（あれば）
+            nameHistory = existingData.nameHistory || [];
+            
+            // 前回の名前が設定されていれば、それを履歴に追加
+            if (existingData.previousName && existingData.previousName !== oldName) {
+              nameHistory.push(existingData.previousName);
             }
-            else if (gameState.stageId === 'stage15') {
-              // ステージ15だが「おのののか」以外の名前に変更された場合
-              console.log('ステージ15で名前が変更されましたが、「おのののか」ではありません');
+            
+            // 最大5件までの履歴を保持
+            if (nameHistory.length > 5) {
+              nameHistory = nameHistory.slice(-5);
             }
+            
+            // プレイヤー情報を更新
+            return playersCollection.doc(currentPlayer.id).update({
+              name: newName,
+              previousName: oldName,
+              nameHistory: nameHistory,
+              showName: showName, // 名前表示設定を更新
+              lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+            });
+          } else {
+            console.error('プレイヤー情報が見つかりません');
+            throw new Error('プレイヤー情報が見つかりませんでした');
           }
-        } catch (error) {
-          console.error('ゲーム状態の取得に失敗しました:', error);
-        }
-        
-        // 名前変更パネルを完全に非表示にする
-        const nameChangePanel = document.getElementById('name-change-panel');
-        if (nameChangePanel) {
-          nameChangePanel.classList.add('hidden-screen');
-          nameChangePanel.style.display = 'none'; // 確実に非表示にする
-        }
-        
-        // プレイヤー画面に戻る
-        showScreen('player-panel');
-        
-        // ポイントのリアルタイムリスナーを再開
-        startPlayerPointsListener();
-      } catch (error) {
-        console.error('名前変更エラー:', error);
-        
-        // 名前変更パネルを非表示にする
-        const nameChangePanel = document.getElementById('name-change-panel');
-        if (nameChangePanel) {
-          nameChangePanel.classList.add('hidden-screen');
-          nameChangePanel.style.display = 'none';
-        }
-        
-        // エラー時もゲーム画面に戻る
-        showScreen('player-panel');
-      }
+        })
+        .then(() => {
+          // 現在のプレイヤー情報を更新
+          currentPlayer.name = newName;
+          currentPlayer.previousName = oldName;
+          currentPlayer.nameHistory = nameHistory;
+          currentPlayer.showName = showName;
+          
+          // プレイヤー表示を同期
+          syncPlayerDisplay();
+          
+          // プレイヤー画面に戻る
+          showScreen('player-panel');
+          
+          // ローカルストレージも更新
+          saveToLocalStorage('currentPlayer', {
+            id: currentPlayer.id,
+            name: newName,
+            points: currentPlayer.points
+          });
+          
+          console.log('名前変更が完了しました:', newName);
+        })
+        .catch(error => {
+          console.error('名前変更エラー:', error);
+          alert('名前の変更に失敗しました。もう一度お試しください。');
+        });
     });
+
+    // チェックボックスの状態変更イベント - 登録画面
+    if (showNameCheckbox) {
+      showNameCheckbox.addEventListener('change', () => {
+        console.log('名前表示設定が変更されました:', showNameCheckbox.checked);
+        
+        // 現在のプレイヤー情報がある場合はFirestoreに保存
+        if (currentPlayer && currentPlayer.id) {
+          playersCollection.doc(currentPlayer.id).update({
+            showName: showNameCheckbox.checked
+          }).then(() => {
+            console.log('名前表示設定を更新しました');
+          }).catch(error => {
+            console.error('名前表示設定の更新に失敗しました:', error);
+          });
+        }
+      });
+    }
+
+    // チェックボックスの状態変更イベント - 名前変更画面
+    if (changeShowNameCheckbox) {
+      changeShowNameCheckbox.addEventListener('change', () => {
+        console.log('名前表示設定が変更されました (名前変更画面):', changeShowNameCheckbox.checked);
+        
+        // 現在のプレイヤー情報がある場合はFirestoreに保存
+        if (currentPlayer && currentPlayer.id) {
+          playersCollection.doc(currentPlayer.id).update({
+            showName: changeShowNameCheckbox.checked
+          }).then(() => {
+            console.log('名前表示設定を更新しました');
+          }).catch(error => {
+            console.error('名前表示設定の更新に失敗しました:', error);
+          });
+        }
+      });
+    }
 
     // 隠しコマンド用の変数
     let touchSequence = []; // タッチシーケンスを記録する配列
